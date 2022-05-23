@@ -22,12 +22,13 @@ FOR DEV:
 """
 
 from abc import ABC, abstractmethod
+from collections import deque
 import utils.GS_timing as timing
 import serial.tools.list_ports as serialport
-import sys
 import pandas as pd
-import serial
 import plotly.figure_factory as ff
+import serial
+import sys
 
 # Address string indicating that the device is being faked/spoofed:
 FAKE_ADDRESS = 'FAKE'
