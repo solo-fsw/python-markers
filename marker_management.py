@@ -26,6 +26,7 @@ import utils.GS_timing as timing
 import serial
 import time
 import json
+import pandas
 
 # Address string indicating that the device is being faked/spoofed:
 FAKE_ADDRESS = 'FAKE'
@@ -78,7 +79,6 @@ class MarkerManager:
         self.report_marker_errors = report_marker_errors
         self.concurrent_marker_threshold_ms = 10
 
-
         # In the future, add an optional Tkinter always-on-top GUI that shows the current marker value, the bit states,
         # the device props, etc, a table with the markers, etc.
         self.gui = None
@@ -102,6 +102,7 @@ class MarkerManager:
         #    If a marker was sent less then concurrent_marker_threshold_ms after the previous, throw error.
         #    Don't count zeros.
 
+        # Value should be int.
 
         # Regardless of report_marker_errors, throw error is marker is outside of range (0 - 255).
 
@@ -110,13 +111,11 @@ class MarkerManager:
 
         # Calculate the marker time relative to the self.start_time, and log the marker:
         marker_time = self._time_function_us()
-        self.marker_list.append({'value': value, 'time': marker_time})
-
+        self.marker_list.append({'value': value, 'start_time': marker_time})
 
     def send_marker_pulse(self, value, duration_ms = 100):
         """Sends a short marker pulse"""
         pass
-
 
     def set_bits(self, bits):
         """Generic function for toggling bits.
@@ -130,7 +129,6 @@ class MarkerManager:
         value = 9999
         self.set_value(value)
 
-
     def set_bit(self, bit, state):
         """Toggle a single bit.
 
@@ -140,24 +138,44 @@ class MarkerManager:
         value = 9999
         self.set_value(value)
 
-
     def gen_marker_table(self):
         """Returns a table (e.g. dataframe) with a list of all markers:
 
-        The table should have, in chronological order, the marker value, and its start and end time, duration.
+        The table should have, in chronological order, the marker value, and its start and end time, duration and occurence.
         The end time and duration should be infinite if the current value is non-zero (the current marker has not yet ended).
 
-        A table with the summaries of all markers should also be returned, it should have a list of all the unique values, and their how many times they were sent."""
-        pass
+        A table with the summaries of all markers should also be returned, it should have a list of all the unique values,
+        and their how many times they were sent."""
 
+        marker_data_frame = pandas.DataFrame(self.marker_list)
+        marker_data_frame["end_time"] = marker_data_frame["start_time"].shift(-1)
+        zero_index = marker_data_frame[marker_data_frame['value'] == 0].index
+        marker_data_frame.drop(zero_index, inplace=True)
+        marker_data_frame["duration"] = marker_data_frame["end_time"] - marker_data_frame["start_time"]
+        print(marker_data_frame)
+        summary = marker_data_frame['value'].value_counts()
+        summary = summary.to_frame()
+        summary.reset_index(inplace=True)
+        summary = summary.rename(columns={'value': 'total_occurences','index': 'value'})
+        print(summary)
+
+        # todo: count occurences and put in marker_table
+
+
+        # todo: if last value of end_time is nan, that means the current value has not been set to 0 and thus the value
+        # is still ongoing, set to infinite
+        # if marker_data_frame["end_time"].isnull().values.len():
+        #
+
+        pass
 
     def print_marker_table(self):
         """Pretty prints the gen_marker_table data."""
         pass
-
     
     def save_marker_table(self):
         """Saves the gen_marker_table data as TSV file(s)."""
+
         pass
 
 
@@ -221,27 +239,38 @@ class UsbParMar(DeviceInterface):
 
         if not fallback_to_fake:
 
-            # Init serial device and configure if necessary.
+            # Create serial device.
             self.serial_device = serial.Serial()
 
             # Open device in command mode:
             self.command_mode()
+            time.sleep(0.1)
 
             # Fetch and save device properties.
-            self._device_properties = self.send_command('V')
+            properties = self.send_command('V')
+            version = properties.get('Version')
+            serialno = properties.get('Serialno')
+            device = properties.get('Device')
+
+            #  {"name" : "firmware_version", "label" : "Firmware version", "value": "0.4.1"}
+            # Aren't regular key value pairs better?
+            self._device_properties = [{"name": "firmware_version",
+                                        "label": "Firmware version",
+                                        "value": version},
+                                       {"name": "serial_number",
+                                        "label": "Serial number",
+                                        "value": serialno},
+                                       {"name": "device_name",
+                                        "label": "Device_name",
+                                        "value": device}]
 
             # Close device
             self.serial_device.close()
             time.sleep(0.1)
 
-            # Set into data mode:
+            # Open device in data mode:
             self.data_mode()
             time.sleep(0.1)
-            marker_sent = self._set_value(2)
-            print(marker_sent)
-            time.sleep(2)
-            marker_sent = self._set_value(0)
-            print(marker_sent)
 
     def device_address(self):
         """Returns device address."""
@@ -253,12 +282,7 @@ class UsbParMar(DeviceInterface):
 
     def _set_value(self, value):
         """Sets the value of the usbParMar device."""
-        if not type(value) == int:
-            return 'ERROR, value should be int'
-        else:
-            self.serial_device.write(bytearray([value]))
-            return 'Marker sent'
-
+        self.serial_device.write(bytearray([value]))
 
     def _close(self):
         """Closes the serial connection."""
@@ -269,8 +293,8 @@ class UsbParMar(DeviceInterface):
         self.open_serial_device(4800)
 
     def data_mode(self):
-        """Opens serial device in command mode."""
-        self.open_serial_device(115000)
+        """Opens serial device in data mode."""
+        self.open_serial_device(115200)
 
     def open_serial_device(self, baudrate):
         """Opens serial device with specified baudrate."""
@@ -313,7 +337,7 @@ class UsbParMar(DeviceInterface):
                 decoded_data = json.loads(decoded_data)
 
             return decoded_data
-    
+
     # Define device-specific methods here, and check the firmware version for compatibility.
     # For instance, as of a future UsbParMar version, the LEDs can be deactivated.
     # Also, as of a future UsbParMar version, a pattern can be specified.

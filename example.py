@@ -16,22 +16,45 @@ marker_manager = mark.MarkerManager(marker_device_type, marker_address, fallback
 print(marker_manager.device_properties)
 print(marker_manager.device_type)
 
+
 # The marker instance will fallback to using a fake marker device if a suitable one could not be found,
 # warn user of this:
 # if marker_manager.is_fake():
 #     pass
 
 # Send a marker:
-marker_manager.set_value(200)
+marker_manager.set_value(3)
 
 # Do something else here, something that takes more than 10 ms.
-time.sleep(2)
+time.sleep(0.1)
+
+# Reset marker:
+marker_manager.set_value(0)
+time.sleep(0.1)
+# Send a marker:
+marker_manager.set_value(3)
+
+# Do something else here, something that takes more than 10 ms.
+time.sleep(0.1)
 
 # Reset marker:
 marker_manager.set_value(0)
 
+time.sleep(0.1)
+
+# Send a marker:
+marker_manager.set_value(2)
+
+# Do something else here, something that takes more than 10 ms.
+time.sleep(0.1)
+
+# Reset marker:
+marker_manager.set_value(0)
+print(marker_manager.marker_list)
 
 # Do something else here, something that takes more than 10 ms.
 time.sleep(0.1)
 
 marker_manager.close()
+
+marker_manager.gen_marker_table()
