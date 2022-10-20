@@ -23,9 +23,13 @@ FOR DEV:
 
 from abc import ABC, abstractmethod
 import utils.GS_timing as timing
+import serial
+import time
+import json
 
 # Address string indicating that the device is being faked/spoofed:
 FAKE_ADDRESS = 'FAKE'
+
 
 class MarkerManager:
     """Sends markers to a given device.
@@ -41,10 +45,8 @@ class MarkerManager:
             param must be a string indicating its name (e.g. "LPT1"), or a string indicating its
 
     """
-    
 
-
-    def __init__(self, device_type, device_address, report_marker_errors = True, time_function_us = lambda : timing.micros()):
+    def __init__(self, device_type, device_address, fallback_to_fake=False, report_marker_errors = True, time_function_us = lambda : timing.micros()):
         """Builds the marker class, and the device interface class used to talk to the device."""
 
 
@@ -53,10 +55,15 @@ class MarkerManager:
         # Throw error if arguments are incorrect, or if a class with same type and address already exists.
 
         # Instantiate the correct DeviceInterface subclass:
-        self.device_interface = type(device_type, 
-              (), 
-              {"device_address": device_address
-               })
+        # self.device_interface = type(device_type, (), {"device_address": device_address})
+        # print(self.device_interface)
+        self.device_type = device_type
+
+        # Above does not work, below does
+        if self.device_type == 'UsbParMar':
+            self.device_interface = UsbParMar(device_address, fallback_to_fake)
+        elif self.device_type == 'EVA':
+            self.device_interface = EVA(device_address, fallback_to_fake)
 
         # Reset marker on init (the marker tracking table assumes that the device has no active markers after init):
         self._current_value = 0
@@ -67,6 +74,7 @@ class MarkerManager:
         self._start_time = time_function_us()
 
         self.marker_list = list()
+        self.fallback_to_fake = fallback_to_fake
         self.report_marker_errors = report_marker_errors
         self.concurrent_marker_threshold_ms = 10
 
@@ -76,15 +84,12 @@ class MarkerManager:
         self.gui = None
 
     @property
-    def device_type(self):
-        """Returns the device type."""
-        return type(self.device_interface).__name__
+    def device_properties(self):
+        return self.device_interface.device_properties()
 
-
-    def close(self, value):
+    def close(self):
         """Closes the connection to the device."""
         self.device_interface._close()
-
 
     def set_value(self, value):
         """Sets value."""
@@ -100,7 +105,6 @@ class MarkerManager:
 
         # Regardless of report_marker_errors, throw error is marker is outside of range (0 - 255).
 
-
         self.device_interface._set_value(value)
         self._current_value = value
 
@@ -108,10 +112,6 @@ class MarkerManager:
         marker_time = self._time_function_us()
         self.marker_list.append({'value': value, 'time': marker_time})
 
-
-    
-    def is_fake(self):
-        return self.device_interface.is_fake()
 
     def send_marker_pulse(self, value, duration_ms = 100):
         """Sends a short marker pulse"""
@@ -197,7 +197,7 @@ class DeviceInterface(ABC):
 
     
     @abstractmethod
-    def _close(self, value):
+    def _close(self):
         """Closes the connection to the serial device, if necessary."""
         pass
 
@@ -213,35 +213,106 @@ class UsbParMar(DeviceInterface):
 
     """
 
-    def __init__(self, device_address):
-        
-        # Init serial device and configure if necessary.
-        self.serial_device = 9999
+    def __init__(self, device_address, fallback_to_fake):
 
         # Save attribs:
         self._device_address = device_address
+        self._fallback_to_fake = fallback_to_fake
 
-        # Fetch and save device properties.
-        self._device_properties = []
-    
+        if not fallback_to_fake:
+
+            # Init serial device and configure if necessary.
+            self.serial_device = serial.Serial()
+
+            # Open device in command mode:
+            self.command_mode()
+
+            # Fetch and save device properties.
+            self._device_properties = self.send_command('V')
+
+            # Close device
+            self.serial_device.close()
+            time.sleep(0.1)
+
+            # Set into data mode:
+            self.data_mode()
+            time.sleep(0.1)
+            marker_sent = self._set_value(2)
+            print(marker_sent)
+            time.sleep(2)
+            marker_sent = self._set_value(0)
+            print(marker_sent)
 
     def device_address(self):
+        """Returns device address."""
         return self._device_address
 
-
     def device_properties(self):
+        """Returns device properties."""
         return self._device_properties
 
-        
     def _set_value(self, value):
         """Sets the value of the usbParMar device."""
-        pass
-    
+        if not type(value) == int:
+            return 'ERROR, value should be int'
+        else:
+            self.serial_device.write(bytearray([value]))
+            return 'Marker sent'
+
 
     def _close(self):
         """Closes the serial connection."""
-        pass
+        self.serial_device.close()
 
+    def command_mode(self):
+        """Opens serial device in command mode."""
+        self.open_serial_device(4800)
+
+    def data_mode(self):
+        """Opens serial device in command mode."""
+        self.open_serial_device(115000)
+
+    def open_serial_device(self, baudrate):
+        """Opens serial device with specified baudrate."""
+        self.serial_device.port = self._device_address
+        self.serial_device.baudrate = baudrate
+        self.serial_device.bytesize = 8
+        self.serial_device.parity = 'N'
+        self.serial_device.stopbits = 1
+        self.serial_device.timeout = 2
+        self.serial_device.write_timeout = 0
+        self.serial_device.open()
+
+    def send_command(self, command):
+        if not self.serial_device.baudrate == 4800:
+            return 'ERROR, serial device not in commmand mode'
+        if not self.serial_device.is_open:
+            return 'ERROR, serial device is not open'
+        if not type(command) == str:
+            return 'ERROR, command should be a string'
+        else:
+
+            def is_json(json_string):
+                try:
+                    json_object = json.loads(json_string)
+                except ValueError as e:
+                    return False
+                return True
+
+            # Send command
+            self.serial_device.flushInput()
+            self.serial_device.write(command.encode())
+            time.sleep(0.1)
+
+            # Get reply
+            data = self.serial_device.readline()
+            decoded_data = data.decode('utf-8')
+
+            # If reply is json string, decode it
+            if is_json(decoded_data):
+                decoded_data = json.loads(decoded_data)
+
+            return decoded_data
     
     # Define device-specific methods here, and check the firmware version for compatibility.
     # For instance, as of a future UsbParMar version, the LEDs can be deactivated.
@@ -249,10 +320,8 @@ class UsbParMar(DeviceInterface):
 
 
 
-class LPT(DeviceInterface):
-    """Class for LPT markers.
-
-     Note, throw error in __init__ if the specified address is not an LPT address.
+class EVA(DeviceInterface):
+    """Class for EVA device.
 
     """
 
@@ -279,3 +348,5 @@ def find_address(device_type, device_name = '', fallback_to_fake = False):
 
     address = ''
     return address
+
+
