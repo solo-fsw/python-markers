@@ -261,8 +261,9 @@ class UsbParMar(DeviceInterface):
             self.command_mode()
             time.sleep(0.1)
 
-            #  {"name" : "firmware_version", "label" : "Firmware version", "value": "0.4.1"}
-            # Aren't regular key value pairs better: {"Version":"HW1:SW1.2","Serialno":"S01234","Device":"UsbParMar"}
+            #  Should be: {"name" : "firmware_version", "label" : "Firmware version", "value": "0.4.1"}
+            # Aren't regular key value pairs better:
+            # {"Version":"HW1:SW1.2","Serialno":"S01234","Device":"UsbParMar"}
             properties = self.send_command('V')
 
             if properties == "":
@@ -379,10 +380,9 @@ def find_com_address(device_type, serial_no='', com_port='',
                      fallback_to_fake=False):
     """ Finds the address of the device.
 
-    If UsbParMar mode or EVA mode, find the COM port. If a device_name was specified, check that it (probably a serial number) matches.
+    If UsbParMar mode or EVA mode, find the COM port. If a device_name was specified, check that the
+    serial number matches.
     Throw error if multiple COM candidates are available. Empty device name uses any.
-
-    etc.
 
     However, if fallback_to_fake is true, don't throw error, just returns the address that toggles faking.  
 
