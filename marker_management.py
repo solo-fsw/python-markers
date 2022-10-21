@@ -48,7 +48,7 @@ class MarkerManager:
 
     """
 
-    def __init__(self, device_type, device_address, fallback_to_fake=False, report_marker_errors=True,
+    def __init__(self, device_type, device_address=FAKE_ADDRESS, fallback_to_fake=False, report_marker_errors=True,
                  time_function_us=lambda: timing.micros()):
         """Builds the marker class, and the device interface class used to talk to the device."""
 
@@ -57,13 +57,12 @@ class MarkerManager:
 
         # Throw error if arguments are incorrect, or if a class with same type and address already exists.
 
-        # Instantiate the correct DeviceInterface subclass:
+        # Instantiate the correct DeviceInterface subclass (doesn't work):
         # self.device_interface = type(device_type, (), {"device_address": device_address})
         # print(self.device_interface)
 
         self.device_type = device_type
 
-        # Above does not work, below does
         if self.device_type == 'UsbParMar':
             self.device_interface = UsbParMar(device_address, fallback_to_fake)
         elif self.device_type == 'EVA':
@@ -104,10 +103,27 @@ class MarkerManager:
         #   Too concurrent markers:
         #    If a marker was sent less then concurrent_marker_threshold_ms after the previous, throw error.
         #    Don't count zeros.
-
-        # Value should be int.
-
         # Regardless of report_marker_errors, throw error is marker is outside of range (0 - 255).
+
+        # Value should be int:
+        if not type(value) == int:
+            raise except_factory("Marker value should be integer.")
+
+        # Value should be between 0 and 255
+        if value > 255 or value < 0:
+            raise except_factory("Marker value out of range (0 - 255).")
+
+        # The same value should not be sent twice (except 0, that doesn't matter):
+        if not len(self.marker_list) == 0 and not value == 0:
+            last_value = self.marker_list[-1]['value']
+            if value == last_value:
+                raise except_factory("Same marker value is sent twice in a row.")
+
+        # Two values should be separated by at least the concurrent marker threshold
+        if not len(self.marker_list) == 0:
+            last_start_time = self.marker_list[-1]['start_time']
+            if (self._time_function_us() - last_start_time) < (self.concurrent_marker_threshold_ms*1000):
+                raise except_factory("Marker was sent too soon after last marker.")
 
         self.device_interface._set_value(value)
         self._current_value = value
@@ -271,8 +287,6 @@ class UsbParMar(DeviceInterface):
             if "Serialno" not in properties:
                 raise except_factory("Serialno missing.")
 
-            self._device_properties = properties
-
             # Close device
             self.serial_device.close()
             time.sleep(0.1)
@@ -280,6 +294,14 @@ class UsbParMar(DeviceInterface):
             # Open device in data mode:
             self.data_mode()
             time.sleep(0.1)
+
+        # fall_back_to_fake:
+        else:
+            properties = {"Version": "0000000",
+                          "Serialno": "0000000",
+                          "Device": "FAKE UsbParMar"}
+
+        self._device_properties = properties
 
     def device_address(self):
         """Returns device address."""
@@ -291,11 +313,13 @@ class UsbParMar(DeviceInterface):
 
     def _set_value(self, value):
         """Sets the value of the usbParMar device."""
-        self.serial_device.write(bytearray([value]))
+        if not self._fallback_to_fake:
+            self.serial_device.write(bytearray([value]))
 
     def _close(self):
         """Closes the serial connection."""
-        self.serial_device.close()
+        if not self._fallback_to_fake:
+            self.serial_device.close()
 
     def command_mode(self):
         """Opens serial device in command mode."""
@@ -392,7 +416,6 @@ def find_com_address(device_type, serial_no='', com_port='',
     if not (device_type == 'UsbParMar'
             or device_type == 'EVA'):
         raise except_factory("Only UsbParMar and EVA supported.")
-
 
     info = {}
 
@@ -496,6 +519,3 @@ def find_com_address(device_type, serial_no='', com_port='',
         raise except_factory("No suitable COM devices found.")
 
     return info
-
-
-
