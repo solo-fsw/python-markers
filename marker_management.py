@@ -4,13 +4,10 @@ This module contains code for sending markers using various devices available at
 
 Devices:
     UsbParMar
-    LPT
     EVA
-
 
 FOR DEV:
 
- > TRY TO THINK OF A BETTER NAME FOR "UsbParMar" and "EVA"!
  > Markers are defined here:
     https://physiodatatoolbox.leidenuniv.nl/docs/user-guide/epochs.html#markers
     https://researchwiki.solo.universiteitleiden.nl/xwiki/wiki/researchwiki.solo.universiteitleiden.nl/view/Hardware/Markers%20and%20Events/
@@ -27,9 +24,13 @@ import serial
 import time
 import json
 import pandas
+import re
+import sys
+from serial.tools.list_ports import comports
 
 # Address string indicating that the device is being faked/spoofed:
 FAKE_ADDRESS = 'FAKE'
+except_factory = BaseException
 
 
 class MarkerManager:
@@ -47,7 +48,8 @@ class MarkerManager:
 
     """
 
-    def __init__(self, device_type, device_address, fallback_to_fake=False, report_marker_errors = True, time_function_us = lambda : timing.micros()):
+    def __init__(self, device_type, device_address, fallback_to_fake=False, report_marker_errors=True,
+                 time_function_us=lambda: timing.micros()):
         """Builds the marker class, and the device interface class used to talk to the device."""
 
 
@@ -58,6 +60,7 @@ class MarkerManager:
         # Instantiate the correct DeviceInterface subclass:
         # self.device_interface = type(device_type, (), {"device_address": device_address})
         # print(self.device_interface)
+
         self.device_type = device_type
 
         # Above does not work, below does
@@ -113,7 +116,7 @@ class MarkerManager:
         marker_time = self._time_function_us()
         self.marker_list.append({'value': value, 'start_time': marker_time})
 
-    def send_marker_pulse(self, value, duration_ms = 100):
+    def send_marker_pulse(self, value, duration_ms=100):
         """Sends a short marker pulse"""
         pass
 
@@ -141,33 +144,48 @@ class MarkerManager:
     def gen_marker_table(self):
         """Returns a table (e.g. dataframe) with a list of all markers:
 
-        The table should have, in chronological order, the marker value, and its start and end time, duration and occurence.
-        The end time and duration should be infinite if the current value is non-zero (the current marker has not yet ended).
+        The table has, in chronological order, the marker value, and its start and end time, duration and occurrence.
+        The end time and duration are infinite if the current value is non-zero (the current marker has not yet ended).
 
-        A table with the summaries of all markers should also be returned, it should have a list of all the unique values,
-        and their how many times they were sent."""
+        A table with the summaries of all markers is also returned, it has a list of all the unique values,
+        and how many times they were sent (total occurrences)."""
 
-        marker_data_frame = pandas.DataFrame(self.marker_list)
-        marker_data_frame["end_time"] = marker_data_frame["start_time"].shift(-1)
-        zero_index = marker_data_frame[marker_data_frame['value'] == 0].index
-        marker_data_frame.drop(zero_index, inplace=True)
-        marker_data_frame["duration"] = marker_data_frame["end_time"] - marker_data_frame["start_time"]
-        print(marker_data_frame)
-        summary = marker_data_frame['value'].value_counts()
+        marker_df = pandas.DataFrame(self.marker_list)
+
+        # Save end time (marker ends when next value is set)
+        marker_df["end_time"] = marker_df["start_time"].shift(-1)
+
+        # Remove the 0 markers
+        zero_index = marker_df[marker_df["value"] == 0].index
+        marker_df.drop(zero_index, inplace=True)
+        marker_df.reset_index(drop=True, inplace=True)
+
+        # When the last marker was a non-zero value, set end time to infinite
+        if pandas.isna(marker_df["end_time"].values[-1]):
+            marker_df["end_time"].values[-1] = float('inf')
+
+        # Save duration
+        marker_df["duration"] = marker_df["end_time"] - marker_df["start_time"]
+
+        # Save marker occurrences:
+        marker_df["occurrence"] = 0
+        marker_occur_dict = {}
+        for index in marker_df.index:
+            cur_value = marker_df.at[index, 'value']
+            if marker_occur_dict.get(cur_value) is None:
+                occurrence = 1
+            else:
+                occurrence = marker_occur_dict.get(cur_value) + 1
+            marker_occur_dict[cur_value] = occurrence
+            marker_df.at[index, "occurrence"] = occurrence
+
+        # Create summary
+        summary = marker_df['value'].value_counts()
         summary = summary.to_frame()
         summary.reset_index(inplace=True)
-        summary = summary.rename(columns={'value': 'total_occurences','index': 'value'})
-        print(summary)
+        summary = summary.rename(columns={'value': 'total_occurrences', 'index': 'value'})
 
-        # todo: count occurences and put in marker_table
-
-
-        # todo: if last value of end_time is nan, that means the current value has not been set to 0 and thus the value
-        # is still ongoing, set to infinite
-        # if marker_data_frame["end_time"].isnull().values.len():
-        #
-
-        pass
+        return marker_df, summary
 
     def print_marker_table(self):
         """Pretty prints the gen_marker_table data."""
@@ -239,30 +257,20 @@ class UsbParMar(DeviceInterface):
 
         if not fallback_to_fake:
 
-            # Create serial device.
-            self.serial_device = serial.Serial()
-
             # Open device in command mode:
             self.command_mode()
             time.sleep(0.1)
 
-            # Fetch and save device properties.
-            properties = self.send_command('V')
-            version = properties.get('Version')
-            serialno = properties.get('Serialno')
-            device = properties.get('Device')
-
             #  {"name" : "firmware_version", "label" : "Firmware version", "value": "0.4.1"}
-            # Aren't regular key value pairs better?
-            self._device_properties = [{"name": "firmware_version",
-                                        "label": "Firmware version",
-                                        "value": version},
-                                       {"name": "serial_number",
-                                        "label": "Serial number",
-                                        "value": serialno},
-                                       {"name": "device_name",
-                                        "label": "Device_name",
-                                        "value": device}]
+            # Aren't regular key value pairs better: {"Version":"HW1:SW1.2","Serialno":"S01234","Device":"UsbParMar"}
+            properties = self.send_command('V')
+
+            if properties == "":
+                raise except_factory("Serial device did not respond.")
+            if "Serialno" not in properties:
+                raise except_factory("Serialno missing.")
+
+            self._device_properties = properties
 
             # Close device
             self.serial_device.close()
@@ -290,22 +298,22 @@ class UsbParMar(DeviceInterface):
 
     def command_mode(self):
         """Opens serial device in command mode."""
-        self.open_serial_device(4800)
+        command_params = {"baudrate": 4800, "bytesize": 8
+                            , "parity": 'N', "stopbits": 1
+                            , "timeout": 2}
+        self.open_serial_device(command_params)
 
     def data_mode(self):
         """Opens serial device in data mode."""
-        self.open_serial_device(115200)
+        data_params = {"baudrate": 115200, "bytesize": 8
+                            , "parity": 'N', "stopbits": 1
+                            , "timeout": 2}
+        self.open_serial_device(data_params)
 
-    def open_serial_device(self, baudrate):
+    def open_serial_device(self, params):
         """Opens serial device with specified baudrate."""
-        self.serial_device.port = self._device_address
-        self.serial_device.baudrate = baudrate
-        self.serial_device.bytesize = 8
-        self.serial_device.parity = 'N'
-        self.serial_device.stopbits = 1
-        self.serial_device.timeout = 2
-        self.serial_device.write_timeout = 0
-        self.serial_device.open()
+        # Create serial device.
+        self.serial_device = serial.Serial(self._device_address, **params)
 
     def send_command(self, command):
         if not self.serial_device.baudrate == 4800:
@@ -330,6 +338,7 @@ class UsbParMar(DeviceInterface):
 
             # Get reply
             data = self.serial_device.readline()
+
             decoded_data = data.decode('utf-8')
 
             # If reply is json string, decode it
@@ -353,13 +362,24 @@ class EVA(DeviceInterface):
 
 
 # Below are helper functions:
+def gen_com_filters(port_regex = '^.*$'
+                , sn_regex = '^.*$'
+                , com_dev_desc_regex = '^.*$'
+                , com_dev_hwid_regex = '^USB VID:PID=2341:.*$'):
 
-def find_address(device_type, device_name = '', fallback_to_fake = False):
+    # Return the COM filters:
+    return {
+        "port_regex": port_regex
+        , "sn_regex": sn_regex
+        , "com_dev_desc_regex": com_dev_desc_regex
+        , "com_dev_hwid_regex": com_dev_hwid_regex}
+
+
+def find_com_address(device_type, serial_no='', com_port='',
+                     fallback_to_fake=False):
     """ Finds the address of the device.
 
-    If LPT mode, return the address. Throw error if no or multiple LPT addresses are available.
-
-    If UsbParMar mode, find the COM port. If a device_name was specified, check that it (probably a serial number) matches.
+    If UsbParMar mode or EVA mode, find the COM port. If a device_name was specified, check that it (probably a serial number) matches.
     Throw error if multiple COM candidates are available. Empty device name uses any.
 
     etc.
@@ -368,9 +388,114 @@ def find_address(device_type, device_name = '', fallback_to_fake = False):
 
     """
 
-    # Note, use the UsbParMar class directly to connect to available COM devices and fetch their properties.
+    # Check device type
+    if not (device_type == 'UsbParMar'
+            or device_type == 'EVA'):
+        raise except_factory("Only UsbParMar and EVA supported.")
 
-    address = ''
-    return address
+
+    info = {}
+
+    # Create filters
+    sn_regexp = "^.*$"
+    port_regexp = "^.*$"
+    if serial_no != '':
+        sn_regexp = "^" + serial_no + "$"
+    if com_port != '':
+        port_regexp = "^" + com_port + "$"
+    com_filters = gen_com_filters(port_regex=port_regexp, sn_regex=sn_regexp)
+
+    # Support a fake COM device request:
+    if fallback_to_fake:
+        if device_type == 'UsbParMar':
+            info['device']['version'] = '0000000'
+            info['device']['Serialno'] = '0000000'
+            info['device']['Device'] = 'FAKE UsbParMar'
+            info["com_port"] = 'FAKE'
+        elif device_type == 'EVA':
+            info['device']['version'] = '0000000'
+            info['device']['Serialno'] = '0000000'
+            info['device']['Device'] = 'FAKE EVA'
+            info["com_port"] = 'FAKE'
+        return info
+
+    # Params:
+    connected = False
+    port_hit = False
+    desc_hit = False
+    hwid_hit = False
+    serial_hit = False
+    port_list = []
+
+    # Loop through ports
+    for port, desc, hwid in comports():
+
+        # Check filters:
+        port_matches_request = re.match(com_filters['port_regex'], port) != None
+        com_dev_desc_matches = re.match(com_filters['com_dev_desc_regex'], desc) != None
+        com_dev_hwid_matches = re.match(com_filters['com_dev_hwid_regex'], hwid) != None
+
+        if port_matches_request:
+            port_hit = True
+        if com_dev_desc_matches:
+            desc_hit = True
+        if com_dev_hwid_matches:
+            hwid_hit = True
+        if not (port_matches_request
+                and com_dev_desc_matches
+                and com_dev_hwid_matches):
+            continue
+
+        # save ports in list
+        port_list.append(port)
+
+    # Check:
+    if len(port_list) == 0:
+        raise except_factory("No device matched the specified COM address.")
+    if not port_hit:
+        raise except_factory("No device matched the specified COM address.")
+    if not desc_hit:
+        raise except_factory("No device matched the specified COM description.")
+    if not hwid_hit:
+        raise except_factory("No device matched the specified HW ID.")
+
+    if device_type == 'UsbParMar':
+
+        # Loop through ports and check devices
+        for port in port_list:
+
+            try:
+                usbparmar_device = UsbParMar(port, fallback_to_fake)
+                info["device"] = usbparmar_device._device_properties
+
+                # Check filter
+                serial_matches_request = re.match(com_filters['sn_regex'], info['device']['Serialno']) != None
+
+                if serial_matches_request:
+                    serial_hit = True
+
+                if connected:
+                    except_factory("Multiple matching devices found.")
+
+                info["com_port"] = port
+                connected = True
+
+            except:
+                try:
+                    UsbParMar._close()
+                except:
+                    pass
+                raise except_factory(f'Could not connect to "{port}" because: {sys.exc_info()[1]}')
+
+    elif device_type == 'EVA':
+        pass
+
+    if not serial_hit:
+        raise except_factory("No device matched the specified serial number.")
+    if not connected:
+        raise except_factory("No suitable COM devices found.")
+
+    return info
+
 
 
