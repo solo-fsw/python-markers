@@ -10,10 +10,12 @@ import time
 
 
 # Find the address and make the marker object:
-marker_device_type = 'UsbParMar'
-device_info = mark.find_com_address(device_type='UsbParMar')
-marker_address = device_info['com_port']
-marker_manager = mark.MarkerManager(marker_device_type, fallback_to_fake=True)
+marker_device_type = 'EVA'
+# device_info = mark.find_com_address(device_type='EVA')
+# marker_address = device_info['com_port']
+marker_manager = mark.MarkerManager(marker_device_type, 'COM5', crash_on_marker_errors=False)
+
+print(marker_manager.device_properties)
 
 # The marker instance will fallback to using a fake marker device if a suitable one could not be found,
 # warn user of this:
@@ -21,10 +23,8 @@ marker_manager = mark.MarkerManager(marker_device_type, fallback_to_fake=True)
 #     pass
 
 marker_manager.set_value(3)
-time.sleep(0.1)
-marker_manager.set_value(0)
-time.sleep(0.1)
 marker_manager.set_value(3)
+marker_manager.set_value(0)
 time.sleep(0.1)
 marker_manager.set_value(0)
 time.sleep(0.1)
