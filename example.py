@@ -11,9 +11,9 @@ import time
 
 # Find the address and make the marker object:
 marker_device_type = 'EVA'
-# device_info = mark.find_com_address(device_type='EVA')
-# marker_address = device_info['com_port']
-marker_manager = mark.MarkerManager(marker_device_type, 'COM5', crash_on_marker_errors=False)
+device_info = mark.find_com_address(device_type='EVA')
+marker_address = device_info['com_port']
+marker_manager = mark.MarkerManager(marker_device_type, marker_address, crash_on_marker_errors=False)
 
 print(marker_manager.device_properties)
 

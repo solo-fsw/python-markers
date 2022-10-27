@@ -639,8 +639,6 @@ def find_com_address(device_type, serial_no='', com_port='', fallback_to_fake=Fa
 
     """
 
-    # Todo: add EVA
-
     # Check device type
     if not (device_type == 'UsbParMar'
             or device_type == 'EVA'):
@@ -740,7 +738,31 @@ def find_com_address(device_type, serial_no='', com_port='', fallback_to_fake=Fa
                 raise except_factory(f'Could not connect to "{port}" because: {sys.exc_info()[1]}')
 
     elif device_type == 'EVA':
-        pass
+        # Loop through ports and check devices
+        for port in port_list:
+
+            try:
+                eva_device = EVA(port, fallback_to_fake)
+                info["device"] = eva_device._device_properties
+
+                # Check filter
+                serial_matches_request = re.match(com_filters['sn_regex'], info['device']['Serialno']) != None
+
+                if serial_matches_request:
+                    serial_hit = True
+
+                if connected:
+                    except_factory("Multiple matching devices found.")
+
+                info["com_port"] = port
+                connected = True
+
+            except:
+                try:
+                    UsbParMar._close()
+                except:
+                    pass
+                raise except_factory(f'Could not connect to "{port}" because: {sys.exc_info()[1]}')
 
     if not serial_hit:
         raise except_factory("No device matched the specified serial number.")
