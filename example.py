@@ -10,8 +10,8 @@ import time
 
 
 # Find the address and make the marker object:
-marker_device_type = 'EVA'
-device_info = mark.find_com_address(device_type='EVA')
+marker_device_type = 'UsbParMar'
+device_info = mark.find_com_address(device_type=marker_device_type)
 marker_address = device_info['com_port']
 marker_manager = mark.MarkerManager(marker_device_type, marker_address, crash_on_marker_errors=False)
 
@@ -36,6 +36,5 @@ time.sleep(0.1)
 marker_manager.close()
 
 marker_table, marker_summary = marker_manager.gen_marker_table()
-
-print(marker_table)
-print(marker_summary)
+marker_manager.save_marker_table()
+marker_manager.print_marker_table()

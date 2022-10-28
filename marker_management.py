@@ -32,6 +32,7 @@ import pandas
 import re
 import sys
 from serial.tools.list_ports import comports
+from tabulate import tabulate
 
 # Address string indicating that the device is being faked/spoofed:
 FAKE_ADDRESS = 'FAKE'
@@ -61,7 +62,6 @@ class MarkerManager:
         # Note, add ability to forward KW arguments to the DeviceInterface constructor.
 
         # Todo: check if class with same type and address already exists
-        # Todo: check fallback to fake var here and in the classes below
 
         # Check device type
         if not (device_type == 'UsbParMar'
@@ -69,7 +69,7 @@ class MarkerManager:
             raise except_factory(f"device_type can only be UsbParMar or EVA, got: {device_type}")
 
         # Check device address (not required when fake device is used):
-        if not fallback_to_fake and device_address == FAKE_ADDRESS:
+        if not fallback_to_fake and device_address == '':
             raise except_factory("Missing required argument: 'device_address'")
 
         if not type(device_address) == str:
@@ -113,6 +113,9 @@ class MarkerManager:
         self.fallback_to_fake = fallback_to_fake
         self.crash_on_marker_errors = crash_on_marker_errors
         self.concurrent_marker_threshold_ms = 10
+
+        self.marker_df = pandas.DataFrame()
+        self.summary = pandas.DataFrame()
 
         # In the future, add an optional Tkinter always-on-top GUI that shows the current marker value, the bit states,
         # the device props, etc, a table with the markers, etc.
@@ -164,7 +167,7 @@ class MarkerManager:
 
         # Two values should be separated by at least the concurrent marker threshold
         if not len(self.marker_list) == 0:
-            last_start_time = self.marker_list[-1]['start_time']
+            last_start_time = self.marker_list[-1]['start_time_us']
 
             if (self._time_function_us() - last_start_time) < (self.concurrent_marker_threshold_ms*1000):
 
@@ -189,8 +192,8 @@ class MarkerManager:
         self._current_value = value
 
         # Calculate the marker time relative to the self.start_time, and log the marker:
-        marker_time = self._time_function_us()
-        self.marker_list.append({'value': value, 'start_time': marker_time, 'marker_error': marker_error})
+        marker_time_us = self._time_function_us()
+        self.marker_list.append({'value': value, 'start_time_us': marker_time_us, 'marker_error': marker_error})
 
     def send_marker_pulse(self, value, duration_ms=100):
         """Sends a short marker pulse (blocking), and resets to 0 afterwards"""
@@ -238,7 +241,7 @@ class MarkerManager:
         marker_df = pandas.DataFrame(self.marker_list)
 
         # Save end time (marker ends when next value is set)
-        marker_df["end_time"] = marker_df["start_time"].shift(-1)
+        marker_df["end_time_us"] = marker_df["start_time_us"].shift(-1)
 
         # Remove the 0 markers
         zero_index = marker_df[marker_df["value"] == 0].index
@@ -246,11 +249,11 @@ class MarkerManager:
         marker_df.reset_index(drop=True, inplace=True)
 
         # When the last marker was a non-zero value, set end time to infinite
-        if pandas.isna(marker_df["end_time"].values[-1]):
-            marker_df["end_time"].values[-1] = float('inf')
+        if pandas.isna(marker_df["end_time_us"].values[-1]):
+            marker_df["end_time_us"].values[-1] = float('inf')
 
         # Save duration
-        marker_df["duration"] = marker_df["end_time"] - marker_df["start_time"]
+        marker_df["duration_us"] = marker_df["end_time_us"] - marker_df["start_time_us"]
 
         # Save marker occurrences:
         marker_df["occurrence"] = 0
@@ -264,7 +267,7 @@ class MarkerManager:
             marker_occur_dict[cur_value] = occurrence
             marker_df.at[index, "occurrence"] = occurrence
 
-        marker_df = marker_df[['value', 'start_time', 'end_time', 'duration', 'occurrence', 'marker_error']]
+        marker_df = marker_df[['value', 'start_time_us', 'end_time_us', 'duration_us', 'occurrence', 'marker_error']]
 
         # Create summary
         summary = marker_df['value'].value_counts()
@@ -272,17 +275,23 @@ class MarkerManager:
         summary.reset_index(inplace=True)
         summary = summary.rename(columns={'value': 'total_occurrences', 'index': 'value'})
 
-        return marker_df, summary
+        self.marker_df = marker_df
+        self.summary = summary
+
+        return self.marker_df, self.summary
 
     def print_marker_table(self):
         """Pretty prints the gen_marker_table data."""
-        # Todo: print marker table
-        pass
+        self.gen_marker_table()
+        print(tabulate(self.summary, headers='keys', tablefmt='fancy_grid'))
+        print(tabulate(self.marker_df, headers='keys', tablefmt='fancy_grid'))
     
     def save_marker_table(self):
-        """Saves the gen_marker_table data as TSV file(s)."""
-        # Todo: save marker table
-        pass
+        """Saves the marker table and summary as TSV files."""
+        # Todo: save header info in tsv files and make better file names
+        self.gen_marker_table()
+        self.marker_df.to_csv('marker_table.tsv', sep='\t', index=False)
+        self.summary.to_csv('marker_summary.tsv', sep='\t', index=False)
 
 
 class DeviceInterface(ABC):
@@ -461,6 +470,21 @@ class UsbParMar(DeviceInterface):
         """Get info from serial device"""
         info = self.send_command('V')
         return info
+
+    def ping(self):
+        """Ping serial device"""
+        ping_answer = self.send_command('P')
+        return ping_answer
+
+    def leds_on(self):
+        """Turns led lights on"""
+        leds_on_answer = self.send_command('L')
+        return leds_on_answer
+
+    def leds_off(self):
+        """Turns led lights on"""
+        leds_off_answer = self.send_command('O')
+        return leds_off_answer
 
     # Define device-specific methods here, and check the firmware version for compatibility.
     # For instance, as of a future UsbParMar version, the LEDs can be deactivated.
