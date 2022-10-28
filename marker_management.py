@@ -24,7 +24,6 @@ Notes:
 """
 
 from abc import ABC, abstractmethod
-import utils.GS_timing as timing
 import serial
 import time
 import json
@@ -32,7 +31,7 @@ import pandas
 import re
 import sys
 from serial.tools.list_ports import comports
-from tabulate import tabulate
+from prettytable import PrettyTable
 
 # Address string indicating that the device is being faked/spoofed:
 FAKE_ADDRESS = 'FAKE'
@@ -55,7 +54,7 @@ class MarkerManager:
     """
 
     def __init__(self, device_type, device_address='', fallback_to_fake=False, crash_on_marker_errors=True,
-                 time_function_us=lambda: timing.micros()):
+                 time_function_us=lambda: time.time() * 1000000):
         """Builds the marker class, and the device interface class used to talk to the device."""
 
 
@@ -90,6 +89,8 @@ class MarkerManager:
         # Set fake address when fallback to fake:
         if fallback_to_fake:
             device_address = FAKE_ADDRESS
+        if device_address == 'FAKE':
+            fallback_to_fake = True
 
         # Instantiate the correct DeviceInterface subclass (doesn't work):
         # self.device_interface = type(device_type, (), {"device_address": device_address})
@@ -283,8 +284,8 @@ class MarkerManager:
     def print_marker_table(self):
         """Pretty prints the gen_marker_table data."""
         self.gen_marker_table()
-        print(tabulate(self.summary, headers='keys', tablefmt='fancy_grid'))
-        print(tabulate(self.marker_df, headers='keys', tablefmt='fancy_grid'))
+        print(PrettyTable(self.summary, headers='keys', tablefmt='fancy_grid'))
+        print(PrettyTable(self.marker_df, headers='keys', tablefmt='fancy_grid'))
     
     def save_marker_table(self):
         """Saves the marker table and summary as TSV files."""
@@ -652,7 +653,7 @@ def gen_com_filters(port_regex = '^.*$'
         , "com_dev_hwid_regex": com_dev_hwid_regex}
 
 
-def find_com_address(device_type, serial_no='', com_port='', fallback_to_fake=False):
+def find_device(device_type, serial_no='ANY', com_port='ANY', fallback_to_fake=False):
     """ Finds the address of the device.
 
     If UsbParMar mode or EVA mode, find the COM port. If a device_name was specified, check that the
@@ -673,9 +674,9 @@ def find_com_address(device_type, serial_no='', com_port='', fallback_to_fake=Fa
     # Create filters
     sn_regexp = "^.*$"
     port_regexp = "^.*$"
-    if serial_no != '':
+    if not serial_no == 'ANY':
         sn_regexp = "^" + serial_no + "$"
-    if com_port != '':
+    if not com_port == 'ANY':
         port_regexp = "^" + com_port + "$"
     com_filters = gen_com_filters(port_regex=port_regexp, sn_regex=sn_regexp)
 

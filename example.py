@@ -11,7 +11,7 @@ import time
 
 # Find the address and make the marker object:
 marker_device_type = 'UsbParMar'
-device_info = mark.find_com_address(device_type=marker_device_type)
+device_info = mark.find_device(device_type=marker_device_type)
 marker_address = device_info['com_port']
 marker_manager = mark.MarkerManager(marker_device_type, marker_address, crash_on_marker_errors=False)
 
