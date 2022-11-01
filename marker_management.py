@@ -3,7 +3,7 @@
 This module contains code for sending markers using various devices available at the FSW.
 
 Devices:
-    UsbParMar
+    UsbParMarker
     EVA
 
 FOR DEV:
@@ -38,6 +38,7 @@ FAKE_ADDRESS = 'FAKE'
 except_factory = BaseException
 
 
+
 class MarkerManager:
     """Sends markers to a given device.
 
@@ -53,18 +54,22 @@ class MarkerManager:
 
     """
 
+    # Log class instances:
+    marker_manager_instances = []
+
     def __init__(self, device_type, device_address='', fallback_to_fake=False, crash_on_marker_errors=True,
                  time_function_us=lambda: time.time() * 1000000):
         """Builds the marker class, and the device interface class used to talk to the device."""
 
 
+
         # Note, add ability to forward KW arguments to the DeviceInterface constructor.
 
-        # Todo: check if class with same type and address already exists
+        # Todo: check if class with same type and address (except fake) already exists
 
         # Check device type
         if not (device_type == 'UsbParMar'
-                or device_type == 'EVA'):
+                or device_type == ''):
             raise except_factory(f"device_type can only be UsbParMar or EVA, got: {device_type}")
 
         # Check device address (not required when fake device is used):
@@ -122,6 +127,10 @@ class MarkerManager:
         # the device props, etc, a table with the markers, etc.
         self.gui = None
 
+
+        MarkerManager.marker_manager_instances.append(self)
+
+
     @property
     def device_properties(self):
         return self.device_interface.device_properties()
@@ -144,13 +153,42 @@ class MarkerManager:
 
         marker_error = ''
 
-        # # Value should be int:
-        if not type(value) == int:
-            raise except_factory("Marker value should be integer.")
 
-        # Value should be between 0 and 255
-        if value > 255 or value < 0:
-            raise except_factory("Marker value out of range (0 - 255).")
+        # Proposal:
+
+        try:
+
+            # Value should be int (mathematically speaking):
+            if not type(value) == int:
+                err_msg = "Marker value should be integer."
+                is_fatal = True
+                raise MarkerError(err_msg, is_fatal)
+            
+            # Value should be between 0 and 255:
+            if value > 255 or value < 0:
+                err_msg = "Marker value out of range (0 - 255)."
+                is_fatal = True
+                raise MarkerError(err_msg, is_fatal)
+
+            # Send marker:
+            try:
+                self.device_interface._set_value(value)
+            except Exception as e:
+                err_msg = f"Could not send marker {e.message}."
+                is_fatal = False
+                raise MarkerError(err_msg, is_fatal)
+
+        except MarkerError as e:
+            
+            if e.is_fatal or self.crash_on_marker_errors:
+                raise e
+                
+        except Exception as e:
+            raise BaseException('Unknown error.')
+
+
+
+
 
         # The same value should not be sent twice (except 0, that doesn't matter):
         if not len(self.marker_list) == 0 and not value == 0:
@@ -239,7 +277,15 @@ class MarkerManager:
         A table with the summaries of all markers is also returned, it has a list of all the unique values,
         and how many times they were sent (total occurrences)."""
 
+
+        # Proposal: Make separate error table.
+
+
         marker_df = pandas.DataFrame(self.marker_list)
+
+
+        # Fix: Implement more complete marker classification.
+
 
         # Save end time (marker ends when next value is set)
         marker_df["end_time_us"] = marker_df["start_time_us"].shift(-1)
@@ -295,6 +341,16 @@ class MarkerManager:
         self.summary.to_csv('marker_summary.tsv', sep='\t', index=False)
 
 
+
+class MarkerError(Exception):
+    def __init__(self, message, is_fatal):
+        super().__init__(message)
+
+        self.is_fatal = is_fatal
+
+
+
+
 class DeviceInterface(ABC):
     """This defines the interface for connecting to a device.
 
@@ -340,10 +396,9 @@ class DeviceInterface(ABC):
 
 
     @property
-    @abstractmethod
     def is_fake(self):
         """Returns a bool indication if the device is faked."""
-        pass
+        return self.device_address == FAKE_ADDRESS
 
 
 class UsbParMar(DeviceInterface):
@@ -639,6 +694,14 @@ class EVA(DeviceInterface):
         return mode
 
 
+
+# Proposal: register interfaces:
+available_interfaces = {UsbParMar, EVA}
+
+
+
+
+
 # Below are helper functions:
 def gen_com_filters(port_regex = '^.*$'
                 , sn_regex = '^.*$'
@@ -734,13 +797,14 @@ def find_device(device_type, serial_no='ANY', com_port='ANY', fallback_to_fake=F
     if not hwid_hit:
         raise except_factory("No device matched the specified HW ID.")
 
-    if device_type == 'UsbParMar':
 
-        # Loop through ports and check devices
-        for port in port_list:
+    # Loop through ports and check devices
+    for port in port_list:
 
-            try:
-                usbparmar_device = UsbParMar(port, fallback_to_fake)
+        try:
+            if device_type == EVA:
+
+                usbparmar_device = EVA(port, fallback_to_fake)
                 info["device"] = usbparmar_device._device_properties
 
                 # Check filter
@@ -755,39 +819,16 @@ def find_device(device_type, serial_no='ANY', com_port='ANY', fallback_to_fake=F
                 info["com_port"] = port
                 connected = True
 
-            except:
-                try:
-                    UsbParMar._close()
-                except:
-                    pass
-                raise except_factory(f'Could not connect to "{port}" because: {sys.exc_info()[1]}')
+            # ...elif UsbParMarker
 
-    elif device_type == 'EVA':
-        # Loop through ports and check devices
-        for port in port_list:
 
+        except:
             try:
-                eva_device = EVA(port, fallback_to_fake)
-                info["device"] = eva_device._device_properties
-
-                # Check filter
-                serial_matches_request = re.match(com_filters['sn_regex'], info['device']['Serialno']) != None
-
-                if serial_matches_request:
-                    serial_hit = True
-
-                if connected:
-                    except_factory("Multiple matching devices found.")
-
-                info["com_port"] = port
-                connected = True
-
+                UsbParMar._close()
             except:
-                try:
-                    UsbParMar._close()
-                except:
-                    pass
-                raise except_factory(f'Could not connect to "{port}" because: {sys.exc_info()[1]}')
+                pass
+            raise except_factory(f'Could not connect to "{port}" because: {sys.exc_info()[1]}')
+
 
     if not serial_hit:
         raise except_factory("No device matched the specified serial number.")
@@ -795,3 +836,6 @@ def find_device(device_type, serial_no='ANY', com_port='ANY', fallback_to_fake=F
         raise except_factory("No suitable COM devices found.")
 
     return info
+
+
+
