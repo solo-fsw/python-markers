@@ -10,10 +10,11 @@ import time
 
 
 # Find the address and make the marker object:
-marker_device_type = 'UsbParMar'
+marker_device_type = 'UsbParMarker'
 device_info = mark.find_device(device_type=marker_device_type)
 marker_address = device_info['com_port']
 marker_manager = mark.MarkerManager(marker_device_type, marker_address, crash_on_marker_errors=False)
+print(marker_manager.device_address)
 
 print(marker_manager.device_properties)
 
@@ -21,9 +22,12 @@ print(marker_manager.device_properties)
 # warn user of this:
 # if marker_manager.is_fake():
 #     pass
-
+marker_manager.set_value(0)
+time.sleep(0.1)
 marker_manager.set_value(3)
+time.sleep(0.1)
 marker_manager.set_value(3)
+time.sleep(0.1)
 marker_manager.set_value(0)
 time.sleep(0.1)
 marker_manager.set_value(0)
