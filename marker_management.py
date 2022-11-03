@@ -526,8 +526,6 @@ class SerialDevice(DeviceInterface):
             raise except_factory("Command should be a string.")
         else:
 
-
-
             # Send command
             self.serial_device.flushInput()
             self.serial_device.write(command.encode())
@@ -540,7 +538,7 @@ class SerialDevice(DeviceInterface):
 
             # If reply is json string, decode it
             try:
-                json_object = json.loads(json_string)
+                json_object = json.loads(decoded_data)
             except ValueError as e:
                 return False
             else:
