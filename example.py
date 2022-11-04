@@ -18,6 +18,7 @@ print(marker_manager.device_address)
 
 print(marker_manager.device_properties)
 
+
 # The marker instance will fallback to using a fake marker device if a suitable one could not be found,
 # warn user of this:
 # if marker_manager.is_fake():
@@ -33,6 +34,10 @@ time.sleep(0.1)
 marker_manager.set_value(0)
 time.sleep(0.1)
 marker_manager.set_value(2)
+time.sleep(0.1)
+marker_manager.set_value(0)
+time.sleep(0.1)
+marker_manager.set_value(3)
 time.sleep(0.1)
 marker_manager.set_value(0)
 time.sleep(0.1)

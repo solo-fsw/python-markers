@@ -26,10 +26,13 @@ Notes:
 from abc import ABC, abstractmethod
 import serial
 import time
+import datetime
 import json
 import pandas
 import re
 import sys
+import os
+import csv
 from serial.tools.list_ports import comports
 from prettytable import PrettyTable, SINGLE_BORDER
 
@@ -59,7 +62,7 @@ class MarkerManager:
     marker_manager_instances = []
 
     def __init__(self, device_type, device_address=FAKE_ADDRESS, crash_on_marker_errors=True,
-                 time_function_us=lambda: time.time() * 1000000):
+                 time_function_us=lambda: time.time() * 1000000, **kwargs):
         """Builds the marker class, and the device interface class used to talk to the device."""
 
         # Note, add ability to forward KW arguments to the DeviceInterface constructor.
@@ -158,7 +161,6 @@ class MarkerManager:
         #    If a marker was sent less then concurrent_marker_threshold_ms after the previous, throw error.
         #    Don't count zeros.
         # Regardless of report_marker_errors, throw error is marker is outside of range (0 - 255).
-
 
         # Check and send marker:
         try:
@@ -266,9 +268,8 @@ class MarkerManager:
 
         last_value = None
         marker_counter = 0
-        cur_marker = False
 
-        df_cols = ['value', 'start_time_us', 'end_time_us', 'duration', 'occurrence']
+        df_cols = ['value', 'start_time_us', 'end_time_us', 'duration_us', 'occurrence']
         marker_df = pandas.DataFrame(columns=df_cols)
 
         # Get marker start and end time:
@@ -276,27 +277,27 @@ class MarkerManager:
 
             cur_value = set_value_df.at[index, 'value']
 
-            if last_value is not None and (cur_value != last_value):
+            # Value changes
+            if cur_value != last_value:
 
-                if cur_value == 0:
-
-                    if cur_marker:
+                # Value changed to 0
+                if cur_value == 0 and last_value is not None:
 
                         # end marker
-                        cur_marker = False
                         cur_marker_end_time = set_value_df.at[index, 'time_us']
                         marker_df.at[marker_counter, 'end_time_us'] = cur_marker_end_time
                         marker_counter = marker_counter + 1
 
+                # Value changed from 0 to non-zero
                 elif cur_value != 0 and last_value == 0:
 
                     # start marker:
-                    cur_marker = True
                     cur_marker_value = cur_value
                     cur_marker_start_time = set_value_df.at[index, 'time_us']
                     marker_df.at[marker_counter, 'value'] = cur_marker_value
                     marker_df.at[marker_counter, 'start_time_us'] = cur_marker_start_time
 
+                # Value changed from non-zero to non-zero
                 elif cur_value != 0 and last_value != 0:
 
                     # end marker:
@@ -331,11 +332,10 @@ class MarkerManager:
             marker_df.loc[index, "occurrence"] = occurrence
 
         # Create summary
-        summary = marker_df['value'].value_counts()
-        summary = summary.to_frame()
-        summary.reset_index(inplace=True)
-        summary = summary.rename(columns={'value': 'total_occurrences', 'index': 'value'})
+        summary = marker_df[['value', 'occurrence']]
+        summary = summary.drop_duplicates(subset=['value'], keep='last')
 
+        # Save tables
         self.marker_df = marker_df
         self.summary = summary
 
@@ -343,6 +343,7 @@ class MarkerManager:
 
     def print_marker_table(self):
         """Pretty prints the gen_marker_table data."""
+
         # Generate most up-to-date marker table
         self.gen_marker_table()
 
@@ -362,13 +363,45 @@ class MarkerManager:
         print(summary_table)
         print(marker_table)
 
-    
-    def save_marker_table(self):
+    def save_marker_table(self, location=os.getcwd()):
         """Saves the marker table and summary as TSV files."""
-        # Todo: save header info in tsv files and make better file names
+
+        # Generate most up-to-date marker table
         self.gen_marker_table()
-        self.marker_df.to_csv('marker_table.tsv', sep='\t', index=False)
-        self.summary.to_csv('marker_summary.tsv', sep='\t', index=False)
+
+        # Check if location has writing permission
+        if not os.access(location, os.W_OK):
+            err_msg = f'No writing permissions in {location}. Marker table cannot be saved.'
+            raise MarkerManagerError(err_msg)
+
+        else:
+
+            # Create filename
+            cur_date_time = datetime.datetime.now()
+            date_n = cur_date_time.strftime("%Y%m%d%H%M%S")
+            fn = date_n + '_marker_table.tsv'
+            full_fn = location + '\\' + fn
+
+            # Get date
+            date_str = cur_date_time.strftime("%Y-%m-%d %H:%M:%S")
+
+            # Convert data to series
+            self.summary.squeeze()
+            self.marker_df.squeeze()
+
+            # Write data to tsv file
+            with open(full_fn, 'w', newline='') as file_out:
+                writer = csv.writer(file_out, delimiter='\t')
+                writer.writerow(['Date: ' + date_str])
+                writer.writerow(['Device: ' + self.device_properties.get('Device')])
+                writer.writerow(['Serialno: ' + self.device_properties.get('Serialno')])
+                writer.writerow(['Version: ' + self.device_properties.get('Version')])
+                writer.writerow('')
+                writer.writerow(self.summary.head())
+                writer.writerows(self.summary.values)
+                writer.writerow('')
+                writer.writerow(self.marker_df.head())
+                writer.writerows(self.marker_df.values)
 
 
 class MarkerError(Exception):
@@ -384,6 +417,11 @@ class MarkerManagerError(Exception):
 
 
 class FindDeviceError(Exception):
+    def __init__(self, message):
+        super().__init__(message)
+
+
+class SerialError(Exception):
     def __init__(self, message):
         super().__init__(message)
 
@@ -455,9 +493,11 @@ class SerialDevice(DeviceInterface):
             properties = self.get_info()
 
             if properties == "":
-                raise except_factory("Serial device did not respond.")
+                err_msg = "Serial device did not respond."
+                raise SerialError(err_msg)
             if "Serialno" not in properties:
-                raise except_factory("Serialno missing.")
+                err_msg = "Serialno missing."
+                raise SerialError(err_msg)
 
             # Close device
             self.serial_device.close()
@@ -556,24 +596,41 @@ class SerialDevice(DeviceInterface):
         ping_answer = self.send_command('P')
         return ping_answer
 
+    def get_hw_version(self):
+        properties = self.device_properties()
+        version = properties.get('Version')
+        hw_version = re.search('HW(.*):', version)
+        return hw_version.group(1)
+
+    def get_sw_version(self):
+        properties = self.device_properties()
+        version = properties.get('Version')
+        sw_version = re.search('SW(.*)', version)
+        return sw_version.group(1)
+
 
 class UsbParMarker(SerialDevice):
     """Class for the UsbParMarker.
 
     """
+
     def leds_on(self):
         """Turns led lights on"""
-        leds_on_answer = self.send_command('L')
+        sw_version = self.get_sw_version()
+        if float(sw_version) < 1.3:
+            leds_on_answer = 'check firmware version, could not turn on leds'
+        else:
+            leds_on_answer = self.send_command('L')
         return leds_on_answer
 
     def leds_off(self):
         """Turns led lights on"""
-        leds_off_answer = self.send_command('O')
+        sw_version = self.get_sw_version()
+        if float(sw_version) < 1.3:
+            leds_off_answer = 'check firmware version, could not turn off leds'
+        else:
+            leds_off_answer = self.send_command('O')
         return leds_off_answer
-
-    # Define device-specific methods here, and check the firmware version for compatibility.
-    # For instance, as of a future UsbParMar version, the LEDs can be deactivated.
-    # Also, as of a future UsbParMar version, a pattern can be specified.
 
 
 class EVA(SerialDevice):
@@ -594,7 +651,6 @@ class EVA(SerialDevice):
         """Get mode (active or passive)"""
         mode = self.send_command('M')
         return mode
-
 
 
 # Below are helper functions:
