@@ -1,0 +1,17 @@
+Date: 2022-11-08 14:22:00
+Device: UsbParMarker
+Serialno: S01065
+Version: HW3:SW1.5
+
+value	occurrence
+2	1
+3	2
+
+value	start_time_us	end_time_us	duration_us	occurrence
+3	1667913719527395.2	1667913719737632.0	210236.75	1
+2	1667913719937928.0	1667913720037973.0	100045.0	1
+3	1667913720147914.0	1667913720147914.0	0.0	2
+
+error	time_us
+Marker with value 3 is sent twice in a row.	1667913719627691.0
+Marker was sent within 10 ms after last marker 	1667913720147914.0

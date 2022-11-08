@@ -65,16 +65,17 @@ class MarkerManager:
                  time_function_us=lambda: time.time() * 1000000, **kwargs):
         """Builds the marker class, and the device interface class used to talk to the device."""
 
-        # Note, add ability to forward KW arguments to the DeviceInterface constructor.
-
         # MarkerManager checks
         try:
 
             # Check if class with same type and address (except fake) already exists
             if not len(MarkerManager.marker_manager_instances) == 0 and not device_address == FAKE_ADDRESS:
+
                 for instance in MarkerManager.marker_manager_instances:
+
                     instance_properties = instance.device_interface.device_properties()
                     instance_address = instance.device_interface.device_address()
+
                     if instance_address == device_address and instance_properties['Device'] == device_type:
                         err_msg = "class of same type and with same address already exists"
                         raise MarkerManagerError(err_msg)
@@ -103,11 +104,7 @@ class MarkerManager:
             raise e
 
         except Exception as e:
-            raise BaseException('Unknown error.')
-
-
-        # Instantiate the correct DeviceInterface subclass (doesn't work):
-        # self.device_interface = type(device_type, (), {"device_address": device_address})
+            raise BaseException(f'Unknown error: {e}')
 
         # Instantiate the correct DeviceInterface subclass
         self.device_type = device_type
@@ -130,7 +127,8 @@ class MarkerManager:
         self.concurrent_marker_threshold_ms = 10
 
         self.marker_df = pandas.DataFrame()
-        self.summary = pandas.DataFrame()
+        self.summary_df = pandas.DataFrame()
+        self.error_df = pandas.DataFrame()
 
         # In the future, add an optional Tkinter always-on-top GUI that shows the current marker value, the bit states,
         # the device props, etc, a table with the markers, etc.
@@ -165,11 +163,8 @@ class MarkerManager:
         # Check and send marker:
         try:
 
-            def is_whole(number):
-                return isinstance(number, int) or (isinstance(number, float) and number.is_integer())
-
-            # Value should be int (mathematically speaking):
-            if not is_whole(value):
+            # Value should be int (whole number):
+            if not isinstance(value, int) or (isinstance(value, float) and value.is_integer()):
                 err_msg = "Marker value should be whole number."
                 is_fatal = True
                 raise MarkerError(err_msg, is_fatal)
@@ -201,7 +196,7 @@ class MarkerManager:
             try:
                 self.device_interface._set_value(value)
             except Exception as e:
-                err_msg = f"Could not send marker: {e.message}."
+                err_msg = f"Could not send marker: {e}."
                 is_fatal = False
                 raise MarkerError(err_msg, is_fatal)
 
@@ -212,7 +207,7 @@ class MarkerManager:
                 raise e
                 
         except Exception as e:
-            raise BaseException('Unknown error.')
+            raise BaseException(f'Unknown error: {e}')
 
         # Save marker value
         self._current_value = value
@@ -335,11 +330,12 @@ class MarkerManager:
         summary = marker_df[['value', 'occurrence']]
         summary = summary.drop_duplicates(subset=['value'], keep='last')
 
-        # Save tables
+        # Save table dataframes:
         self.marker_df = marker_df
-        self.summary = summary
+        self.summary_df = summary
+        self.error_df = pandas.DataFrame(self.error_list)
 
-        return self.marker_df, self.summary
+        return self.marker_df, self.summary_df, self.error_df
 
     def print_marker_table(self):
         """Pretty prints the gen_marker_table data."""
@@ -348,20 +344,33 @@ class MarkerManager:
         self.gen_marker_table()
 
         # Create pretty tables:
-        summary_table = PrettyTable(list(self.summary.columns))
-        for row in self.summary.itertuples():
+        summary_table = PrettyTable(list(self.summary_df.columns))
+        for row in self.summary_df.itertuples():
             summary_table.add_row(row[1:])
 
         marker_table = PrettyTable(list(self.marker_df.columns))
         for row in self.marker_df.itertuples():
             marker_table.add_row(row[1:])
 
+        error_table = PrettyTable(list(self.error_df.columns))
+        for indx in range(len(self.error_df)):
+            print(row)
+            error_table.add_row(error_table)
+            print(error_table)
+
+        print(self.error_df)
+        print(self.summary_df)
+        print(self.marker_df)
+
         summary_table.set_style(SINGLE_BORDER)
         marker_table.set_style(SINGLE_BORDER)
+        error_table.set_style(SINGLE_BORDER)
 
         # Print tables
+        print(error_table)
         print(summary_table)
         print(marker_table)
+
 
     def save_marker_table(self, location=os.getcwd()):
         """Saves the marker table and summary as TSV files."""
@@ -386,8 +395,9 @@ class MarkerManager:
             date_str = cur_date_time.strftime("%Y-%m-%d %H:%M:%S")
 
             # Convert data to series
-            self.summary.squeeze()
+            self.summary_df.squeeze()
             self.marker_df.squeeze()
+            self.error_df.squeeze()
 
             # Write data to tsv file
             with open(full_fn, 'w', newline='') as file_out:
@@ -397,11 +407,14 @@ class MarkerManager:
                 writer.writerow(['Serialno: ' + self.device_properties.get('Serialno')])
                 writer.writerow(['Version: ' + self.device_properties.get('Version')])
                 writer.writerow('')
-                writer.writerow(self.summary.head())
-                writer.writerows(self.summary.values)
+                writer.writerow(self.summary_df.head())
+                writer.writerows(self.summary_df.values)
                 writer.writerow('')
                 writer.writerow(self.marker_df.head())
                 writer.writerows(self.marker_df.values)
+                writer.writerow('')
+                writer.writerow(self.error_df.head())
+                writer.writerows(self.error_df.values)
 
 
 class MarkerError(Exception):
@@ -554,16 +567,20 @@ class SerialDevice(DeviceInterface):
         try:
             self.serial_device = serial.Serial(self._device_address, **params)
         except:
-            raise except_factory('Could not open serial device')
+            err_msg = "Could not open serial device"
+            raise SerialError(err_msg)
 
     def send_command(self, command):
         """Sends command to serial device."""
         if not self.serial_device.baudrate == 4800:
-            raise except_factory("Serial device not in command mode.")
+            err_msg = "Serial device not in command mode."
+            raise SerialError(err_msg)
         if not self.serial_device.is_open:
-            raise except_factory("Serial device not open.")
+            err_msg = "Serial device not open."
+            raise SerialError(err_msg)
         if not type(command) == str:
-            raise except_factory("Command should be a string.")
+            err_msg = "Command should be a string."
+            raise SerialError(err_msg)
         else:
 
             # Send command
@@ -579,8 +596,8 @@ class SerialDevice(DeviceInterface):
             # If reply is json string, decode it
             try:
                 json_object = json.loads(decoded_data)
-            except ValueError as e:
-                return False
+            except ValueError:
+                pass
             else:
                 decoded_data = json.loads(decoded_data)
 
@@ -618,7 +635,7 @@ class UsbParMarker(SerialDevice):
         """Turns led lights on"""
         sw_version = self.get_sw_version()
         if float(sw_version) < 1.3:
-            leds_on_answer = 'check firmware version, could not turn on leds'
+            leds_on_answer = 'Check firmware version, could not turn on leds'
         else:
             leds_on_answer = self.send_command('L')
         return leds_on_answer
@@ -627,7 +644,7 @@ class UsbParMarker(SerialDevice):
         """Turns led lights on"""
         sw_version = self.get_sw_version()
         if float(sw_version) < 1.3:
-            leds_off_answer = 'check firmware version, could not turn off leds'
+            leds_off_answer = 'Check firmware version, could not turn off leds'
         else:
             leds_off_answer = self.send_command('O')
         return leds_off_answer
