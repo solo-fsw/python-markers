@@ -174,7 +174,7 @@ class MarkerManager:
         try:
 
             # Value should be int (whole number):
-            if not(isinstance(value, int) or (isinstance(value, float) and value.is_integer())):
+            if not whole_number(value):
                 err_msg = "Marker value should be whole number."
                 is_fatal = True
                 raise MarkerError(err_msg, is_fatal)
@@ -238,11 +238,19 @@ class MarkerManager:
         E.g. markers.set_bits('00000001') sets all bits except the last to LOW.
 
         Use EVA endianess convention:
-         LSB is the right one
          MSB is the left one
+         LSB is the right one
         """
-        # Check that bits consist of string with 8 numbers:
-        
+        # Check that bits consist of string with 8 chars:
+        if not type(bits) == str and len(bits) != 8:
+            err_msg = "bits should be str containing characters"
+            raise MarkerManagerError(err_msg)
+
+        # Check that the 8 chars consist of zeros and/or ones:
+        find_all_bits = re.findall('[0-1]', bits)
+        if not len(find_all_bits) == 8:
+            err_msg = "bits should be 8 str characters consisting of 0 or 1, e.g. '00000001'"
+            raise MarkerManagerError(err_msg)
 
         # Convert bits to int and set value
         value = int(bits, 2)
@@ -253,14 +261,28 @@ class MarkerManager:
 
         Toggle a single bit, leave other bits intact.
 
-        Use EVA bit numbering convention: 0 - 7
+        Use EVA bit numbering convention: 0 - 7 -> 0 is MSB?
 
         """
-        # Todo: set bit
 
+        if not whole_number(bit) or bit < 0 or bit > 7:
+            err_msg = "bit should be whole number between 0 and 7"
+            raise MarkerManagerError(err_msg)
+
+        # Convert current value to 8 bit string
         cur_bits = format(self._current_value, '#010b')[2:]
 
-        value = 9999
+        # Set concerning bit dependent on state:
+        if state == 'on':
+            new_bits = cur_bits[:bit] + '1' + cur_bits[bit + 1:]
+        elif state == 'off':
+            new_bits = cur_bits[:bit] + '0' + cur_bits[bit + 1:]
+        else:
+            err_msg = "set_bit state can only be 'on' or 'off'"
+            raise MarkerManagerError(err_msg)
+
+        # Convert 8 bit string to int and set_value:
+        value = int(new_bits, 2)
         self.set_value(value)
 
     def gen_marker_table(self):
@@ -688,6 +710,14 @@ class EVA(SerialDevice):
         """Get mode (active or passive)"""
         mode = self.send_command('M')
         return mode
+
+
+def whole_number(value):
+    if isinstance(value, int) or \
+            (isinstance(value, float) and value.is_integer()):
+        return True
+    else:
+        return False
 
 
 # Helper functions:

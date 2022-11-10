@@ -16,6 +16,8 @@ marker_device_type = 'EVA'
 device_info = mark.find_device(device_type=marker_device_type, fallback_to_fake=True)
 marker_address = device_info['com_port']
 marker_manager = mark.MarkerManager(marker_device_type, marker_address, crash_on_marker_errors=False)
+marker_manager.set_bits('00000001')
+marker_manager.set_bit(0, 'on')
 print(marker_manager.device_address)
 print(marker_manager.device_properties)
 
