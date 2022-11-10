@@ -24,8 +24,8 @@ Notes:
 """
 
 from abc import ABC, abstractmethod
+import utils.GS_timing as timing
 import serial
-import time
 import datetime
 import json
 import pandas
@@ -49,12 +49,12 @@ class MarkerManager:
     An instance of this class is tied to a device, and sends controls and sends markers.
 
     Available devices:
-        UsbParMar:
-            This mode uses the "UsbParMar" gadget to send markers. The device_address
+        UsbParMarker:
+            This mode uses the "UsbParMarker" gadget to send markers. The device_address
             param must be its COM address (e.g. COM3).
-        LPT:
-            This mode uses the printerport (aka LPT port) to send markers. The device_address
-            param must be a string indicating its name (e.g. "LPT1"), or a string indicating its
+        EVA:
+            This mode uses the "EVA" gadget to send markers. The device_address
+            param must be its COM address (e.g. COM3).
 
     """
 
@@ -62,7 +62,7 @@ class MarkerManager:
     marker_manager_instances = []
 
     def __init__(self, device_type, device_address=FAKE_ADDRESS, crash_on_marker_errors=True,
-                 time_function_us=lambda: time.time() * 1000000, **kwargs):
+                 time_function_us=lambda: timing.micros(), **kwargs):
         """Builds the marker class, and the device interface class used to talk to the device."""
 
         # MarkerManager checks
@@ -138,10 +138,12 @@ class MarkerManager:
 
     @property
     def device_address(self):
+        """Returns the device address"""
         return self.device_interface.device_address()
 
     @property
     def device_properties(self):
+        """Returns the device properties"""
         return self.device_interface.device_properties()
 
     def close(self):
@@ -149,22 +151,30 @@ class MarkerManager:
         self.device_interface._close()
 
     def set_value(self, value):
-        """Sets value."""
+        """Sets the marker value.
 
-        # Throw marker errors if self.report_marker_errors is true:
-        #   Double markers:
-        #    If the value is not zero (zeros are not markers) and the value is equal to the current value,
-        #    the same value is sent twice with no effect.
-        #   Too concurrent markers:
-        #    If a marker was sent less then concurrent_marker_threshold_ms after the previous, throw error.
-        #    Don't count zeros.
-        # Regardless of report_marker_errors, throw error is marker is outside of range (0 - 255).
+        The current marker value and current time are saved in self.set_value_list
+
+        The following fatal marker errors are thrown:
+          If the value is not a whole number
+          If the value is outside of range (0 - 255)
+
+        The following non-fatal marker errors are thrown if self.crash_on_marker_errors is true,
+            else they are stored in self.error_list:
+          Double markers:
+           If the value is not zero (zeros are not markers) and the value is equal to the current value,
+           the same value is sent twice in a row with no effect.
+          Concurrent markers:
+           If a marker was sent less than concurrent_marker_threshold_ms after the previous.
+          Marker error:
+           If the marker could not be sent to the marker device for whatever reason.
+        """
 
         # Check and send marker:
         try:
 
             # Value should be int (whole number):
-            if not isinstance(value, int) or (isinstance(value, float) and value.is_integer()):
+            if not(isinstance(value, int) or (isinstance(value, float) and value.is_integer())):
                 err_msg = "Marker value should be whole number."
                 is_fatal = True
                 raise MarkerError(err_msg, is_fatal)
@@ -202,7 +212,7 @@ class MarkerManager:
 
         except MarkerError as e:
             # Save error
-            self.error_list.append({'error': e, 'time_us': self._time_function_us()})
+            self.error_list.append({'error': e.message, 'time_us': self._time_function_us()})
             if e.is_fatal or self.crash_on_marker_errors:
                 raise e
                 
@@ -219,45 +229,53 @@ class MarkerManager:
     def send_marker_pulse(self, value, duration_ms=100):
         """Sends a short marker pulse (blocking), and resets to 0 afterwards"""
         self.set_value(value)
-        time.sleep(duration_ms/1000)
+        timing.delay(duration_ms)
         self.set_value(0)
 
     def set_bits(self, bits):
         """Generic function for toggling bits.
 
         E.g. markers.set_bits('00000001') sets all bits except the last to LOW.
-        Use EVA endianess convention.
 
-        LSB is the right one
-        MSB is the left one
+        Use EVA endianess convention:
+         LSB is the right one
+         MSB is the left one
         """
-        # Todo: set bits
+        # Check that bits consist of string with 8 numbers:
+        
 
-        # Calculate the value from the bits, call set_value().
-        value = 9999
+        # Convert bits to int and set value
+        value = int(bits, 2)
         self.set_value(value)
 
     def set_bit(self, bit, state):
         """Toggle a single bit.
 
-        Toggle a single bit, leave other bits intact. Use EVA bit numbering convention.
+        Toggle a single bit, leave other bits intact.
 
-        0 - 7
+        Use EVA bit numbering convention: 0 - 7
 
         """
         # Todo: set bit
+
+        cur_bits = format(self._current_value, '#010b')[2:]
 
         value = 9999
         self.set_value(value)
 
     def gen_marker_table(self):
-        """Returns a table (e.g. dataframe) with a list of all markers:
-
-        The table has, in chronological order, the marker value, and its start and end time, duration and occurrence.
-        The end time and duration are infinite if the current value is non-zero (the current marker has not yet ended).
-
-        A table with the summaries of all markers is also returned, it has a list of all the unique values,
-        and how many times they were sent (total occurrences)."""
+        """
+        Returns three dataframes:
+          - marker dataframe
+                This dataframe has, in chronological order, the marker value, its start and end time, duration and
+                occurrence. The end time and duration are infinite if the current value is non-zero (the current marker
+                has not yet ended).
+          - summary dataframe
+                The summary dataframe has a list of all unique values and how many times they were sent (total
+                occurrences).
+          - error dataframe
+                The error dataframe has a list of all non-fatal errors and their times.
+        """
 
         set_value_df = pandas.DataFrame(self.set_value_list)
 
@@ -267,7 +285,9 @@ class MarkerManager:
         df_cols = ['value', 'start_time_us', 'end_time_us', 'duration_us', 'occurrence']
         marker_df = pandas.DataFrame(columns=df_cols)
 
-        # Get marker start and end time:
+        # Get marker start and end time
+        # - The marker start is defined as marker value change from zero to non-zero or from non-zero to non-zero
+        # - The marker end is defined as a marker value change from non-zero to zero or from non-zero to non-zero
         for index in set_value_df.index:
 
             cur_value = set_value_df.at[index, 'value']
@@ -275,7 +295,7 @@ class MarkerManager:
             # Value changes
             if cur_value != last_value:
 
-                # Value changed to 0
+                # Value changed to 0 and it is not the first value (first value is always set to 0 at init)
                 if cur_value == 0 and last_value is not None:
 
                         # end marker
@@ -338,7 +358,7 @@ class MarkerManager:
         return self.marker_df, self.summary_df, self.error_df
 
     def print_marker_table(self):
-        """Pretty prints the gen_marker_table data."""
+        """Prints the marker table, summary table and error table, generated with gen_marker_table."""
 
         # Generate most up-to-date marker table
         self.gen_marker_table()
@@ -350,17 +370,13 @@ class MarkerManager:
 
         marker_table = PrettyTable(list(self.marker_df.columns))
         for row in self.marker_df.itertuples():
+            print('row: ' + str(row[1:]))
             marker_table.add_row(row[1:])
 
         error_table = PrettyTable(list(self.error_df.columns))
-        for indx in range(len(self.error_df)):
-            print(row)
-            error_table.add_row(error_table)
-            print(error_table)
-
-        print(self.error_df)
-        print(self.summary_df)
-        print(self.marker_df)
+        for row in self.error_df.itertuples():
+            print('row: ' + str(row[1:]))
+            error_table.add_row(row[1:])
 
         summary_table.set_style(SINGLE_BORDER)
         marker_table.set_style(SINGLE_BORDER)
@@ -371,9 +387,8 @@ class MarkerManager:
         print(summary_table)
         print(marker_table)
 
-
     def save_marker_table(self, location=os.getcwd()):
-        """Saves the marker table and summary as TSV files."""
+        """Saves the marker table, summary table and error table in one TSV file."""
 
         # Generate most up-to-date marker table
         self.gen_marker_table()
@@ -421,22 +436,26 @@ class MarkerError(Exception):
     def __init__(self, message, is_fatal):
         super().__init__(message)
 
+        self.message = message
         self.is_fatal = is_fatal
 
 
 class MarkerManagerError(Exception):
     def __init__(self, message):
         super().__init__(message)
+        self.message = message
 
 
 class FindDeviceError(Exception):
     def __init__(self, message):
         super().__init__(message)
+        self.message = message
 
 
 class SerialError(Exception):
     def __init__(self, message):
         super().__init__(message)
+        self.message = message
 
 
 class DeviceInterface(ABC):
@@ -460,12 +479,10 @@ class DeviceInterface(ABC):
     @property
     @abstractmethod
     def device_properties(self):
-        """Returns the properties of the device (firmware version, name, etc.)."""
-
-        # For props, use list with one elements per prop, with each element having the fields: name, label, value.
-        #  {"name" : "firmware_version", "label" : "Firmware version", "value": "0.4.1"}
-        # Aren't regular key value pairs better:
-        # {"Version":"HW1:SW1.2","Serialno":"S01234","Device":"UsbParMar"}
+        """
+        Returns the properties of the device as follows (values are examples):
+         {"Version":"HW1:SW1.1","Serialno":"S01234","Device":"UsbParMar"}
+        """
         pass
 
 
@@ -500,7 +517,7 @@ class SerialDevice(DeviceInterface):
 
             # Open device in command mode:
             self.command_mode()
-            time.sleep(0.1)
+            timing.delay(100)
 
             # Example: {"Version":"HW1:SW1.2","Serialno":"S01234","Device":"UsbParMar"}
             properties = self.get_info()
@@ -514,11 +531,11 @@ class SerialDevice(DeviceInterface):
 
             # Close device
             self.serial_device.close()
-            time.sleep(0.1)
+            timing.delay(100)
 
             # Open device in data mode:
             self.data_mode()
-            time.sleep(0.1)
+            timing.delay(100)
 
         # return fake device
         else:
@@ -586,7 +603,7 @@ class SerialDevice(DeviceInterface):
             # Send command
             self.serial_device.flushInput()
             self.serial_device.write(command.encode())
-            time.sleep(0.1)
+            timing.delay(100)
 
             # Get reply
             data = self.serial_device.readline()
@@ -628,7 +645,8 @@ class SerialDevice(DeviceInterface):
 
 class UsbParMarker(SerialDevice):
     """Class for the UsbParMarker.
-
+    Note, the subclass constructors must throw errors if the specified parameters cannot be resolved.
+    E.g., no device with the specified address exist, or it it is not of the expected type.
     """
 
     def leds_on(self):
@@ -652,6 +670,8 @@ class UsbParMarker(SerialDevice):
 
 class EVA(SerialDevice):
     """Class for EVA device.
+    Note, the subclass constructors must throw errors if the specified parameters cannot be resolved.
+    E.g., no device with the specified address exist, or it it is not of the expected type.
 
     """
     def set_active_mode(self):
@@ -670,66 +690,62 @@ class EVA(SerialDevice):
         return mode
 
 
-# Below are helper functions:
-def gen_com_filters(port_regex = '^.*$'
+# Helper functions:
+def gen_com_filters(device_regex = '^.*$'
+                , port_regex = '^.*$'
                 , sn_regex = '^.*$'
                 , com_dev_desc_regex = '^.*$'
                 , com_dev_hwid_regex = '^USB VID:PID=2341:.*$'):
 
     # Return the COM filters:
     return {
-        "port_regex": port_regex
+        "device_regex": device_regex
+        , "port_regex": port_regex
         , "sn_regex": sn_regex
         , "com_dev_desc_regex": com_dev_desc_regex
         , "com_dev_hwid_regex": com_dev_hwid_regex}
 
 
-def find_device(device_type, serial_no='ANY', com_port='ANY', fallback_to_fake=False):
+def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=False):
     """ Finds the address of the device.
 
-    If UsbParMar mode or EVA mode, find the COM port. If a device_name was specified, check that the
+    If UsbParMarker mode or EVA mode, find the COM port. If a device_name was specified, check that the
     serial number matches.
-    Throw error if multiple COM candidates are available. Empty device name uses any.
+    Throw error if multiple COM candidates are available.
 
     However, if fallback_to_fake is true, don't throw error, just returns the address that toggles faking.  
 
     """
 
     # Check device type
-    if device_type not in available_devices:
+    if device_type not in available_devices and device_type != '':
         raise except_factory(f"Only {available_devices} supported.")
 
     info = {}
 
     # Create filters
+    device_regexp = "^.*$"
     sn_regexp = "^.*$"
     port_regexp = "^.*$"
-    if not serial_no == 'ANY':
-        sn_regexp = "^" + serial_no + "$"
-    if not com_port == 'ANY':
-        port_regexp = "^" + com_port + "$"
-    com_filters = gen_com_filters(port_regex=port_regexp, sn_regex=sn_regexp)
 
-    # Support a fake COM device request:
-    if fallback_to_fake:
-        if device_type == 'UsbParMarker':
-            info['device']['version'] = '0000000'
-            info['device']['Serialno'] = '0000000'
-            info['device']['Device'] = 'FAKE UsbParMar'
-            info["com_port"] = 'FAKE'
-        elif device_type == 'EVA':
-            info['device']['version'] = '0000000'
-            info['device']['Serialno'] = '0000000'
-            info['device']['Device'] = 'FAKE EVA'
-            info["com_port"] = 'FAKE'
-        return info
+    if not device_type == '':
+        device_regexp = "^" + device_type + "$"
+    if not serial_no == '':
+        sn_regexp = "^" + serial_no + "$"
+    if not com_port == '':
+        port_regexp = "^" + com_port + "$"
+
+    com_filters = gen_com_filters(device_regex=device_regexp, port_regex=port_regexp, sn_regex=sn_regexp)
 
     # Params:
     connected = False
     port_hit = False
-    desc_hit = False
-    hwid_hit = False
+    device_hit = False
     serial_hit = False
+    multiple_hit = False
+    connection_error = False
+    connection_error_port = ''
+    connection_error_info = ''
     port_list = []
 
     # Loop through ports
@@ -740,12 +756,6 @@ def find_device(device_type, serial_no='ANY', com_port='ANY', fallback_to_fake=F
         com_dev_desc_matches = re.match(com_filters['com_dev_desc_regex'], desc) != None
         com_dev_hwid_matches = re.match(com_filters['com_dev_hwid_regex'], hwid) != None
 
-        if port_matches_request:
-            port_hit = True
-        if com_dev_desc_matches:
-            desc_hit = True
-        if com_dev_hwid_matches:
-            hwid_hit = True
         if not (port_matches_request
                 and com_dev_desc_matches
                 and com_dev_hwid_matches):
@@ -754,81 +764,77 @@ def find_device(device_type, serial_no='ANY', com_port='ANY', fallback_to_fake=F
         # save ports in list
         port_list.append(port)
 
+    if len(port_list) != 0:
+
+        # At least one port with correct port, desc and hwid found
+        port_hit = True
+
+        # Loop through ports and check devices
+        for port in port_list:
+
+            try:
+                # Create general serial device to obtain device info
+                cur_device = SerialDevice(port)
+
+            except:
+                try:
+                    cur_device._close()
+                except:
+                    pass
+                connection_error = True
+                connection_error_port = port
+                connection_error_info = sys.exc_info()[1]
+                continue
+
+            info["device"] = cur_device._device_properties
+
+            # Check filter
+            device_matches_request = re.match(com_filters['device_regex'], info['device']['Device']) is not None
+            serial_matches_request = re.match(com_filters['sn_regex'], info['device']['Serialno']) is not None
+
+            if device_matches_request:
+                device_hit = True
+            if serial_matches_request:
+                serial_hit = True
+            if connected:
+                multiple_hit = True
+
+            info["com_port"] = port
+            connected = True
+
     # Checks:
     try:
 
         # Check if any port was found:
-        if len(port_list) == 0:
-            err_msg = "No device matched the specified COM address."
-            raise FindDeviceError(err_msg)
         if not port_hit:
             err_msg = "No device matched the specified COM address."
             raise FindDeviceError(err_msg)
-        if not desc_hit:
-            err_msg = "No device matched the specified COM description."
+        if not device_hit:
+            err_msg = "No device matched the specified device type."
             raise FindDeviceError(err_msg)
-        if not hwid_hit:
-            err_msg = "No device matched the specified HW ID."
-            raise FindDeviceError(err_msg)
-
-    except FindDeviceError as e:
-        raise e
-
-    except Exception as e:
-        raise BaseException('Unknown error.')
-
-    # Loop through ports and check devices
-    for port in port_list:
-
-        try:
-            if device_type == 'EVA':
-                cur_device = EVA(port)
-
-            elif device_type == 'UsbParMarker':
-                cur_device = UsbParMarker(port)
-
-        except:
-            try:
-                cur_device._close()
-            except:
-                pass
-            err_msg = f'Could not connect to "{port}" because: {sys.exc_info()[1]}'
-            raise FindDeviceError(err_msg)
-
-
-        info["device"] = cur_device._device_properties
-
-        # Check filter
-        serial_matches_request = re.match(com_filters['sn_regex'], info['device']['Serialno']) != None
-
-        if serial_matches_request:
-            serial_hit = True
-
-        if connected:
-            err_msg = "Multiple matching devices found."
-            FindDeviceError(err_msg)
-
-        info["com_port"] = port
-        connected = True
-
-    # More checks:
-    try:
-
-        # Check if any port was found:
         if not serial_hit:
             err_msg = "No device matched the specified serial number."
             raise FindDeviceError(err_msg)
         if not connected:
             err_msg = "No suitable COM devices found."
             raise FindDeviceError(err_msg)
+        if multiple_hit:
+            err_msg = "Multiple matching devices found."
+            FindDeviceError(err_msg)
+        if connection_error:
+            err_msg = f'Could not connect to "{connection_error_port}" because: {connection_error_info}'
+            raise FindDeviceError(err_msg)
 
     except FindDeviceError as e:
-        raise e
+        if fallback_to_fake:
+            info['device'] = {'Version': '0000000',
+                              'Serialno': '0000000',
+                              'Device': 'FAKE ' + device_type}
+            info["com_port"] = 'FAKE'
+        else:
+            raise e
 
     except Exception as e:
         raise BaseException('Unknown error.')
 
     return info
-
-
-
