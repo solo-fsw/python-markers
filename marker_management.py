@@ -34,13 +34,14 @@ import sys
 import os
 import csv
 from serial.tools.list_ports import comports
-from prettytable import PrettyTable, SINGLE_BORDER
+from prettytable import PrettyTable
 
 # Address string indicating that the device is being faked/spoofed:
 FAKE_ADDRESS = 'FAKE'
+FAKE_DEVICE = 'FAKE DEVICE'
 
 # Indicate devices here
-available_devices = {'UsbParMarker', 'EVA'}
+available_devices = {'UsbParMarker', 'EVA', FAKE_DEVICE}
 
 
 class MarkerManager:
@@ -112,6 +113,9 @@ class MarkerManager:
             self.device_interface = UsbParMarker(device_address)
         elif self.device_type == 'EVA':
             self.device_interface = EVA(device_address)
+        # Create general serial device when device is fake
+        elif self.device_type == FAKE_DEVICE:
+            self.device_interface = SerialDevice(FAKE_ADDRESS)
 
         # Log timestamp of creation (use GS_Timing microseconds):
         self._time_function_us = time_function_us
@@ -170,8 +174,6 @@ class MarkerManager:
              If the marker could not be sent to the marker device for whatever reason.
         """
 
-        start_set_value = self._time_function_us()
-
         # Check and send marker:
         try:
 
@@ -199,8 +201,10 @@ class MarkerManager:
             # Two values should be separated by at least the concurrent marker threshold:
             if not len(self.set_value_list) == 0:
                 last_start_time = self.set_value_list[-1]['time_us']
+                last_value = self.set_value_list[-1]['value']
                 if (self._time_function_us() - last_start_time) < (self.concurrent_marker_threshold_ms * 1000):
-                    err_msg = f"Marker was sent within {self.concurrent_marker_threshold_ms} ms after last marker "
+                    err_msg = f"Marker with value {value} was sent within {self.concurrent_marker_threshold_ms} " \
+                              f"ms after previous marker with value {last_value}"
                     is_fatal = False
                     raise MarkerError(err_msg, is_fatal)
 
@@ -227,9 +231,6 @@ class MarkerManager:
         # Calculate the marker time relative to the self.start_time, and log the marker:
         marker_time_us = self._time_function_us()
         self.set_value_list.append({'value': value, 'time_us': marker_time_us})
-
-        duration_set_value = self._time_function_us() - start_set_value
-        print("duration set value us: " + str(duration_set_value))
 
     def send_marker_pulse(self, value, duration_ms=100):
         """Sends a short marker pulse (blocking), and resets to 0 afterwards"""
@@ -305,7 +306,6 @@ class MarkerManager:
         """
 
         set_value_df = pandas.DataFrame(self.set_value_list)
-        print(set_value_df)
 
         last_value = None
         marker_counter = 0
@@ -410,9 +410,9 @@ class MarkerManager:
         for row in self.error_df.itertuples():
             error_table.add_row(row[1:])
 
-        summary_table.set_style(SINGLE_BORDER)
-        marker_table.set_style(SINGLE_BORDER)
-        error_table.set_style(SINGLE_BORDER)
+        # summary_table.set_style(SINGLE_BORDER)
+        # marker_table.set_style(SINGLE_BORDER)
+        # error_table.set_style(SINGLE_BORDER)
 
         # Print tables
         print(error_table)
@@ -755,7 +755,7 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
 
     # Check device type
     if device_type not in available_devices and device_type != '':
-        raise FindDeviceError(f"Only {available_devices} supported or ''.")
+        raise FindDeviceError(f"Only {available_devices} supported.")
 
     info = {}
 
@@ -867,8 +867,8 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
         if fallback_to_fake:
             info['device'] = {'Version': '0000000',
                               'Serialno': '0000000',
-                              'Device': 'FAKE ' + device_type}
-            info["com_port"] = 'FAKE'
+                              'Device': FAKE_DEVICE}
+            info["com_port"] = FAKE_ADDRESS
         else:
             raise e
 
