@@ -419,7 +419,7 @@ class MarkerManager:
         print(summary_table)
         print(marker_table)
 
-    def save_marker_table(self, location=os.getcwd()):
+    def save_marker_table(self, filename="", location=os.getcwd(), more_info=""):
         """Saves the marker table, summary table and error table in one TSV file."""
 
         # Generate most up-to-date marker table
@@ -432,10 +432,18 @@ class MarkerManager:
 
         else:
 
-            # Create filename
             cur_date_time = datetime.datetime.now()
-            date_n = cur_date_time.strftime("%Y%m%d%H%M%S")
-            fn = date_n + '_marker_table.tsv'
+
+            if filename == "":
+
+                # Create filename
+                date_n = cur_date_time.strftime("%Y%m%d%H%M%S")
+                fn = date_n + '_marker_table.tsv'
+
+            else:
+
+                fn = filename + '_marker_table.tsv'
+
             full_fn = location + '\\' + fn
 
             # Get date
@@ -453,13 +461,19 @@ class MarkerManager:
                 writer.writerow(['Device: ' + self.device_properties.get('Device')])
                 writer.writerow(['Serialno: ' + self.device_properties.get('Serialno')])
                 writer.writerow(['Version: ' + self.device_properties.get('Version')])
+                if type(more_info) == dict:
+                    for key, value in more_info.items():
+                        writer.writerow([key + ': ' + str(value)])
                 writer.writerow('')
+                writer.writerow(['#Summary#'])
                 writer.writerow(self.summary_df.head())
                 writer.writerows(self.summary_df.values)
                 writer.writerow('')
+                writer.writerow(['#Markers#'])
                 writer.writerow(self.marker_df.head())
                 writer.writerows(self.marker_df.values)
                 writer.writerow('')
+                writer.writerow(['#Errors#'])
                 writer.writerow(self.error_df.head())
                 writer.writerows(self.error_df.values)
 

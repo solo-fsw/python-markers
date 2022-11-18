@@ -47,5 +47,5 @@ timing.delay(100)
 marker_manager.close()
 
 marker_table, marker_summary, errors = marker_manager.gen_marker_table()
-marker_manager.save_marker_table()
+marker_manager.save_marker_table(filename="subject1", more_info={'key1': 1, 'key2': 2, 'key3': 3})
 marker_manager.print_marker_table()
