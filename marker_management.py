@@ -24,13 +24,9 @@ Notes:
 # - Check if libraries exist in OS installation (non-megapack), if not replace them with included libraries or
 #   native libraries. https://osdoc.cogsci.nl/3.3/notes/3312/
 # - Evaluate renaming serial device descriptor in Arduino IDE.
-# - Add fake behavior.
+# - Adjust fake device: should not be general serial device
 # - LUXURY: Evaluate browser based updating of devices.
 # - Check set_bit LSB, MSB
-# - Add assert in gen marker table for assumption first value is 0
-# - cur time in gen marker table
-# - singular time in set_value and add value in marker error message
-# - do not save tables in self, instead return only, edit print_marker_table and save_marker_table accordingly
 # - sendcommand should include everything, close if necessary, open in command, send command, close, reopen in data mode
 
 from abc import ABC, abstractmethod
@@ -169,10 +165,6 @@ class MarkerManager:
         self.crash_on_marker_errors = crash_on_marker_errors
         self.concurrent_marker_threshold_ms = 10
 
-        self.marker_df = pandas.DataFrame()
-        self.summary_df = pandas.DataFrame()
-        self.error_df = pandas.DataFrame()
-
         # Reset marker on init (when creating the marker_df in gen_marker_table it is assumed
         # that the device has no active markers after init):
         self._current_value = 0
@@ -224,6 +216,9 @@ class MarkerManager:
                      If the marker could not be sent to the marker device for whatever reason.
         """
 
+        # Get current time:
+        cur_time = self._time_function_ms()
+
         # Check and send marker:
         try:
 
@@ -261,7 +256,7 @@ class MarkerManager:
                 last_start_time = self.set_value_list[-1]['time_ms']
                 last_value = self.set_value_list[-1]['value']
                 if not (value == 0 and last_value == 0):
-                    if (self._time_function_ms() - last_start_time) < self.concurrent_marker_threshold_ms:
+                    if (cur_time - last_start_time) < self.concurrent_marker_threshold_ms:
                         err_msg = f"Marker with value {value} was sent within {self.concurrent_marker_threshold_ms} " \
                                   f"ms after previous marker with value {last_value}"
                         is_fatal = False
@@ -269,7 +264,7 @@ class MarkerManager:
 
         except MarkerError as e:
             # Save error
-            self.error_list.append({'time_ms': self._time_function_ms(), 'error': e.message})
+            self.error_list.append({'time_ms': cur_time, 'error': e.message})
             if e.is_fatal or self.crash_on_marker_errors:
                 raise e
                 
@@ -280,8 +275,7 @@ class MarkerManager:
         self._current_value = value
 
         # Log the marker:
-        marker_time_ms = self._time_function_ms()
-        self.set_value_list.append({'value': value, 'time_ms': marker_time_ms})
+        self.set_value_list.append({'value': value, 'time_ms': cur_time})
 
     def send_marker_pulse(self, value, duration_ms=100):
         """Sends a short marker pulse (blocking), and resets to 0 afterwards"""
@@ -357,9 +351,12 @@ class MarkerManager:
 
         set_value_df = pandas.DataFrame(self.set_value_list)
 
+        # Assumes that the first value is always set to 0 at init.
+        assert set_value_df['value'].iloc[0] == 0
+
+        # init
         last_value = None
         marker_counter = 0
-
         df_cols = ['value', 'start_time_ms', 'end_time_ms', 'duration_ms', 'occurrence']
         marker_df = pandas.DataFrame(columns=df_cols)
 
@@ -369,40 +366,35 @@ class MarkerManager:
         for index in set_value_df.index:
 
             cur_value = set_value_df.at[index, 'value']
+            cur_time = set_value_df.at[index, 'time_ms']
 
             # Value changes
             if cur_value != last_value:
 
-                # Value changed to 0 and it is not the first value (first value is always set to 0 at init)
+                # Value changed to 0 and it is not the first value
                 if cur_value == 0 and last_value is not None:
 
                     # end marker
-                    cur_marker_end_time_ms = set_value_df.at[index, 'time_ms']
-                    marker_df.at[marker_counter, 'end_time_ms'] = cur_marker_end_time_ms
+                    marker_df.at[marker_counter, 'end_time_ms'] = cur_time
                     marker_counter = marker_counter + 1
 
                 # Value changed from 0 to non-zero
                 elif cur_value != 0 and last_value == 0:
 
                     # start marker:
-                    cur_marker_value = cur_value
-                    cur_marker_start_time_ms = set_value_df.at[index, 'time_ms']
-                    marker_df.at[marker_counter, 'value'] = cur_marker_value
-                    marker_df.at[marker_counter, 'start_time_ms'] = cur_marker_start_time_ms
+                    marker_df.at[marker_counter, 'value'] = cur_value
+                    marker_df.at[marker_counter, 'start_time_ms'] = cur_time
 
                 # Value changed from non-zero to non-zero
                 elif cur_value != 0 and last_value != 0:
 
                     # end marker:
-                    cur_marker_end_time_ms = set_value_df.at[index, 'time_ms']
-                    marker_df.at[marker_counter, 'end_time_ms'] = cur_marker_end_time_ms
+                    marker_df.at[marker_counter, 'end_time_ms'] = cur_time
                     marker_counter = marker_counter + 1
 
                     # start marker:
-                    cur_marker_value = cur_value
-                    cur_marker_start_time_ms = set_value_df.at[index, 'time_ms']
-                    marker_df.at[marker_counter, 'value'] = cur_marker_value
-                    marker_df.at[marker_counter, 'start_time_ms'] = cur_marker_start_time_ms
+                    marker_df.at[marker_counter, 'value'] = cur_value
+                    marker_df.at[marker_counter, 'start_time_ms'] = cur_time
 
             last_value = cur_value
 
@@ -430,16 +422,14 @@ class MarkerManager:
             marker_occur_dict[cur_value] = occurrence
             marker_df.loc[index, "occurrence"] = occurrence
 
-        # Create summary
-        summary = marker_df[['value', 'occurrence']]
-        summary = summary.drop_duplicates(subset=['value'], keep='last')
+        # Create summary table
+        summary_df = marker_df[['value', 'occurrence']]
+        summary_df = summary_df.drop_duplicates(subset=['value'], keep='last')
 
-        # Save table dataframes:
-        self.marker_df = marker_df
-        self.summary_df = summary
-        self.error_df = pandas.DataFrame(self.error_list)
+        # Create error table
+        error_df = pandas.DataFrame(self.error_list)
 
-        return self.marker_df, self.summary_df, self.error_df
+        return marker_df, summary_df, error_df
 
     def print_marker_table(self):
         """Prints marker table, summary table and error table, generated with gen_marker_table."""
@@ -448,30 +438,26 @@ class MarkerManager:
         from prettytable import PrettyTable
 
         # Generate most up-to-date marker table
-        self.gen_marker_table()
+        marker_df, summary_df, error_df = self.gen_marker_table()
 
         # Create pretty tables:
         summary_table = PrettyTable()
         summary_table.title = "Summary table"
-        summary_table.field_names = list(self.summary_df.columns)
-        for row in self.summary_df.itertuples():
+        summary_table.field_names = list(summary_df.columns)
+        for row in summary_df.itertuples():
             summary_table.add_row(row[1:])
 
         marker_table = PrettyTable()
         marker_table.title = "Marker table"
-        marker_table.field_names = list(self.marker_df.columns)
-        for row in self.marker_df.itertuples():
+        marker_table.field_names = list(marker_df.columns)
+        for row in marker_df.itertuples():
             marker_table.add_row(row[1:])
 
         error_table = PrettyTable()
         error_table.title = "Error table"
-        error_table.field_names = list(self.error_df.columns)
-        for row in self.error_df.itertuples():
+        error_table.field_names = list(error_df.columns)
+        for row in error_df.itertuples():
             error_table.add_row(row[1:])
-
-        # summary_table.set_style(SINGLE_BORDER)
-        # marker_table.set_style(SINGLE_BORDER)
-        # error_table.set_style(SINGLE_BORDER)
 
         # Print tables
         print(error_table)
@@ -504,7 +490,7 @@ class MarkerManager:
             raise MarkerManagerError(err_msg)
 
         # Generate most up-to-date marker table
-        self.gen_marker_table()
+        marker_df, summary_df, error_df = self.gen_marker_table()
 
         # Get cur date and time
         cur_date_time = datetime.datetime.now()
@@ -522,9 +508,9 @@ class MarkerManager:
         date_str = cur_date_time.strftime("%Y-%m-%d %H:%M:%S")
 
         # Convert data to series
-        self.summary_df.squeeze()
-        self.marker_df.squeeze()
-        self.error_df.squeeze()
+        summary_df.squeeze()
+        marker_df.squeeze()
+        error_df.squeeze()
 
         # Write data to tsv file
         with open(full_fn, 'w', newline='') as file_out:
@@ -538,16 +524,16 @@ class MarkerManager:
                     writer.writerow([key + ': ' + str(value)])
             writer.writerow('')
             writer.writerow(['#Summary#'])
-            writer.writerow(self.summary_df.head())
-            writer.writerows(self.summary_df.values)
+            writer.writerow(summary_df.head())
+            writer.writerows(summary_df.values)
             writer.writerow('')
             writer.writerow(['#Markers#'])
-            writer.writerow(self.marker_df.head())
-            writer.writerows(self.marker_df.values)
+            writer.writerow(marker_df.head())
+            writer.writerows(marker_df.values)
             writer.writerow('')
             writer.writerow(['#Errors#'])
-            writer.writerow(self.error_df.head())
-            writer.writerows(self.error_df.values)
+            writer.writerow(error_df.head())
+            writer.writerows(error_df.values)
 
 
 class MarkerError(Exception):
@@ -694,29 +680,34 @@ class SerialDevice(DeviceInterface):
 
     def command_mode(self):
         """Opens serial device in command mode."""
-        command_params = {"baudrate": 4800, "bytesize": 8,
-                          "parity": 'N', "stopbits": 1,
-                          "timeout": 2}
-        self.open_serial_device(command_params)
+        if not self.is_fake:
+            command_params = {"baudrate": 4800, "bytesize": 8,
+                              "parity": 'N', "stopbits": 1,
+                              "timeout": 2}
+            self.open_serial_device(command_params)
 
     def data_mode(self):
         """Opens serial device in data mode."""
-        data_params = {"baudrate": 115200, "bytesize": 8,
-                       "parity": 'N', "stopbits": 1,
-                       "timeout": 2}
-        self.open_serial_device(data_params)
+        if not self.is_fake:
+            data_params = {"baudrate": 115200, "bytesize": 8,
+                           "parity": 'N', "stopbits": 1,
+                           "timeout": 2}
+            self.open_serial_device(data_params)
 
     def open_serial_device(self, params):
         """Opens serial device with specified baudrate."""
-        # Create serial device.
-        try:
-            self.serial_device = serial.Serial(self._device_address, **params)
-        except:
-            err_msg = "Could not open serial device"
-            raise SerialError(err_msg)
+        if not self.is_fake:
+            # Create serial device.
+            try:
+                self.serial_device = serial.Serial(self._device_address, **params)
+            except:
+                err_msg = "Could not open serial device"
+                raise SerialError(err_msg)
 
     def send_command(self, command):
         """Sends command to serial device."""
+
+        assert not self.is_fake
 
         if not self.serial_device.baudrate == 4800:
             err_msg = "Serial device not in command mode."
@@ -750,27 +741,43 @@ class SerialDevice(DeviceInterface):
 
     def get_info(self):
         """Get info from serial device."""
-        info = self.send_command('V')
+        if not self.is_fake:
+            info = self.send_command('V')
+        else:
+            info = {"Version": "0000000",
+                    "Serialno": "0000000",
+                    "Device": FAKE_DEVICE}
         return info
 
     def ping(self):
         """Ping serial device."""
-        ping_answer = self.send_command('P')
+        if not self.is_fake:
+            ping_answer = self.send_command('P')
+        else:
+            ping_answer = "pong, " + FAKE_DEVICE
         return ping_answer
 
     def get_hw_version(self):
         """Get hardware version."""
-        properties = self.device_properties()
-        version = properties.get('Version')
-        hw_version = re.search('HW(.*):', version)
-        return hw_version.group(1)
+        if not self.is_fake:
+            properties = self.device_properties()
+            version = properties.get('Version')
+            hw_version = re.search('HW(.*):', version)
+            hw_version = hw_version.group(1)
+        else:
+            hw_version = 0
+        return hw_version
 
     def get_sw_version(self):
         """Get software version."""
-        properties = self.device_properties()
-        version = properties.get('Version')
-        sw_version = re.search('SW(.*)', version)
-        return sw_version.group(1)
+        if not self.is_fake:
+            properties = self.device_properties()
+            version = properties.get('Version')
+            sw_version = re.search('SW(.*)', version)
+            sw_version = sw_version.group(1)
+        else:
+            sw_version = 0
+        return sw_version
 
 
 class UsbParMarker(SerialDevice):
