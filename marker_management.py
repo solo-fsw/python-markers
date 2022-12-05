@@ -4,18 +4,15 @@ This module contains code for sending markers using various devices available at
 
 Devices:
     UsbParMarker
-    EVA
+    Eva
 
 FOR DEV:
-
  > Markers are defined here:
     https://physiodatatoolbox.leidenuniv.nl/docs/user-guide/epochs.html#markers
     https://researchwiki.solo.universiteitleiden.nl/xwiki/wiki/researchwiki.solo.universiteitleiden.nl/view/Hardware/Markers%20and%20Events/
 
-
- Style Guide:
+ > Style Guide:
    http://google.github.io/styleguide/pyguide.html
-
 
 Notes:
     Only Python 3 supported
@@ -23,8 +20,21 @@ Notes:
 
 """
 
+# Todo:
+# - Check if libraries exist in OS installation (non-megapack), if not replace them with included libraries or
+#   native libraries. https://osdoc.cogsci.nl/3.3/notes/3312/
+# - Evaluate renaming serial device descriptor in Arduino IDE.
+# - Add fake behavior.
+# - LUXURY: Evaluate browser based updating of devices.
+# - Check set_bit LSB, MSB
+# - Add assert in gen marker table for assumption first value is 0
+# - cur time in gen marker table
+# - singular time in set_value and add value in marker error message
+# - do not save tables in self, instead return only, edit print_marker_table and save_marker_table accordingly
+# - sendcommand should include everything, close if necessary, open in command, send command, close, reopen in data mode
+
 from abc import ABC, abstractmethod
-import utils.GS_timing as timing
+import GS_timing as timing
 import serial
 import datetime
 import json
@@ -34,14 +44,21 @@ import sys
 import os
 import csv
 from serial.tools.list_ports import comports
-from prettytable import PrettyTable
 
 # Address string indicating that the device is being faked/spoofed:
 FAKE_ADDRESS = 'FAKE'
 FAKE_DEVICE = 'FAKE DEVICE'
 
-# Indicate devices here
-available_devices = {'UsbParMarker', 'EVA', FAKE_DEVICE}
+# Available devices:
+#   UsbParMarker:
+#       This mode uses the "UsbParMarker" gadget to send markers. The device_address
+#       param must be its COM address (e.g. COM3).
+#   Eva:
+#       This mode uses the "Eva" gadget to send markers. The device_address
+#       param must be its COM address (e.g. COM3).
+#   FAKE_DEVICE:
+#       This mode uses the FAKE_DEVICE
+available_devices = {'UsbParMarker', 'Eva', FAKE_DEVICE}
 
 
 class MarkerManager:
@@ -49,22 +66,53 @@ class MarkerManager:
 
     An instance of this class is tied to a device, and sends controls and sends markers.
 
-    Available devices:
-        UsbParMarker:
-            This mode uses the "UsbParMarker" gadget to send markers. The device_address
-            param must be its COM address (e.g. COM3).
-        EVA:
-            This mode uses the "EVA" gadget to send markers. The device_address
-            param must be its COM address (e.g. COM3).
-
+    Attributes:
+        device_type:
+            string of device type, can only contain one of the devices as defined in available_devices
+        device_interface:
+            instantiation of the device interface subclass
+        _time_function_ms:
+            function to get current time in ms
+        _start_time:
+            time of the current MarkerManager instance creation
+        set_value_list:
+            list of all set_value calls which includes the value and time
+        error_list:
+            list of errors that occurred when sending a marker
+        crash_on_marker_errors:
+            bool indicating whether the script should crash when a marker error occurs
+        concurrent_marker_threshold_ms:
+            threshold in ms that triggers the concurrent marker error
+        marker_df:
+            dataframe with all markers (filled when calling gen_marker_table)
+        summary_df:
+            dataframe with summary of the markers (filled when calling gen_marker_table)
+        error_df:
+            dataframe with all marker errors (filled when calling gen_marker_table)
+        _current_value:
+            the current value that is
+        gui:
+            gui for future purposes (for now: gui = None)
     """
 
     # Log class instances:
     marker_manager_instances = []
 
     def __init__(self, device_type, device_address=FAKE_ADDRESS, crash_on_marker_errors=True,
-                 time_function_us=lambda: timing.micros(), **kwargs):
-        """Builds the marker class, and the device interface class used to talk to the device."""
+                 time_function_ms=lambda: timing.millis(), **kwargs):
+        """Initializes MarkerManager
+
+        Builds the marker class, and the device interface class used to talk to the device.
+
+        Args:
+            device_type: see Attributes
+            device_address: see Attributes
+            crash_on_marker_errors: see Attributes
+            time_function_ms: see Attributes
+
+        Raises:
+            MarkerManagerError: error when something goes wrong in the MarkerManager
+        """
 
         # MarkerManager checks
         try:
@@ -81,24 +129,20 @@ class MarkerManager:
                         err_msg = "class of same type and with same address already exists"
                         raise MarkerManagerError(err_msg)
 
-            # Check device type
             if device_type not in available_devices:
                 err_msg = f"device_type can only be {available_devices}, got: {device_type}"
                 raise MarkerManagerError(err_msg)
 
-            # Check device address
-            if not type(device_address) == str:
+            if not isinstance(device_address, str):
                 err_msg = f"device_address should be str, got {type(device_address)}"
                 raise MarkerManagerError(err_msg)
 
-            # Check report_marker_errors
-            if not type(crash_on_marker_errors == bool):
+            if not isinstance(crash_on_marker_errors, bool):
                 err_msg = f"report_marker_errors should be bool, got {type(crash_on_marker_errors)}"
                 raise MarkerManagerError(err_msg)
 
-            # Check time function
-            if not callable(time_function_us):
-                err_msg = "time_function_us should be function"
+            if not callable(time_function_ms):
+                err_msg = "time_function_ms should be function"
                 raise MarkerManagerError(err_msg)
 
         except MarkerManagerError as e:
@@ -107,19 +151,18 @@ class MarkerManager:
         except Exception as e:
             raise BaseException(f'Unknown error: {e}')
 
-        # Instantiate the correct DeviceInterface subclass
+        # Instantiate the correct DeviceInterface subclass or create general serial device when device is fake
         self.device_type = device_type
         if self.device_type == 'UsbParMarker':
             self.device_interface = UsbParMarker(device_address)
-        elif self.device_type == 'EVA':
-            self.device_interface = EVA(device_address)
-        # Create general serial device when device is fake
+        elif self.device_type == 'Eva':
+            self.device_interface = Eva(device_address)
         elif self.device_type == FAKE_DEVICE:
             self.device_interface = SerialDevice(FAKE_ADDRESS)
 
-        # Log timestamp of creation (use GS_Timing microseconds):
-        self._time_function_us = time_function_us
-        self._start_time = time_function_us()
+        # Log attributes
+        self._time_function_ms = time_function_ms
+        self._start_time = time_function_ms()
 
         self.set_value_list = list()
         self.error_list = list()
@@ -130,14 +173,17 @@ class MarkerManager:
         self.summary_df = pandas.DataFrame()
         self.error_df = pandas.DataFrame()
 
-        # Reset marker on init (the marker tracking table assumes that the device has no active markers after init):
+        # Reset marker on init (when creating the marker_df in gen_marker_table it is assumed
+        # that the device has no active markers after init):
         self._current_value = 0
         self.set_value(0)
+        timing.delay(100)
 
         # In the future, add an optional Tkinter always-on-top GUI that shows the current marker value, the bit states,
         # the device props, etc, a table with the markers, etc.
         self.gui = None
 
+        # Append instance of current marker manager
         MarkerManager.marker_manager_instances.append(self)
 
     @property
@@ -159,25 +205,29 @@ class MarkerManager:
 
         The current marker value and current time are saved in self.set_value_list
 
-        The following fatal marker errors are thrown:
-          - If the value is not a whole number
-          - If the value is outside of range (0 - 255)
+        Arg:
+            value: the marker value
 
-        The following non-fatal marker errors are thrown if self.crash_on_marker_errors is true,
-            else they are stored in self.error_list:
-          - Double markers:
-             If the value is not zero (zeros are not markers) and the value is equal to the current value,
-             the same value is sent twice in a row with no effect.
-          - Concurrent markers:
-             If a marker was sent less than concurrent_marker_threshold_ms after the previous.
-          - Marker error:
-             If the marker could not be sent to the marker device for whatever reason.
+        Raises:
+            MarkerError:
+                Always raised:
+                  - If the value is not a whole number
+                  - If the value is outside of range (0 - 255)
+
+                Only when self.crash_on_marker_errors is true (else they are stored in self.error_list):
+                  - Double markers:
+                     If the value is not zero (zeros are not markers) and the value is equal to the current value,
+                     the same value is sent twice in a row with no effect.
+                  - Concurrent markers:
+                     If a marker was sent less than concurrent_marker_threshold_ms after the previous.
+                  - Marker error:
+                     If the marker could not be sent to the marker device for whatever reason.
         """
 
         # Check and send marker:
         try:
 
-            # Value should be int (whole number):
+            # Value should be int (i.e. whole number):
             if not whole_number(value):
                 err_msg = "Marker value should be whole number."
                 is_fatal = True
@@ -187,6 +237,14 @@ class MarkerManager:
             if value > 255 or value < 0:
                 err_msg = "Marker value out of range (0 - 255)."
                 is_fatal = True
+                raise MarkerError(err_msg, is_fatal)
+
+            # Send marker:
+            try:
+                self.device_interface._set_value(value)
+            except Exception as e:
+                err_msg = f"Could not send marker: {e}."
+                is_fatal = False
                 raise MarkerError(err_msg, is_fatal)
 
             # The same value should not be sent twice (except 0, that doesn't matter):
@@ -200,25 +258,18 @@ class MarkerManager:
 
             # Two values should be separated by at least the concurrent marker threshold:
             if not len(self.set_value_list) == 0:
-                last_start_time = self.set_value_list[-1]['time_us']
+                last_start_time = self.set_value_list[-1]['time_ms']
                 last_value = self.set_value_list[-1]['value']
-                if (self._time_function_us() - last_start_time) < (self.concurrent_marker_threshold_ms * 1000):
-                    err_msg = f"Marker with value {value} was sent within {self.concurrent_marker_threshold_ms} " \
-                              f"ms after previous marker with value {last_value}"
-                    is_fatal = False
-                    raise MarkerError(err_msg, is_fatal)
-
-            # Send marker:
-            try:
-                self.device_interface._set_value(value)
-            except Exception as e:
-                err_msg = f"Could not send marker: {e}."
-                is_fatal = False
-                raise MarkerError(err_msg, is_fatal)
+                if not (value == 0 and last_value == 0):
+                    if (self._time_function_ms() - last_start_time) < self.concurrent_marker_threshold_ms:
+                        err_msg = f"Marker with value {value} was sent within {self.concurrent_marker_threshold_ms} " \
+                                  f"ms after previous marker with value {last_value}"
+                        is_fatal = False
+                        raise MarkerError(err_msg, is_fatal)
 
         except MarkerError as e:
             # Save error
-            self.error_list.append({'time_us': self._time_function_us(), 'error': e.message})
+            self.error_list.append({'time_ms': self._time_function_ms(), 'error': e.message})
             if e.is_fatal or self.crash_on_marker_errors:
                 raise e
                 
@@ -228,9 +279,9 @@ class MarkerManager:
         # Save marker value
         self._current_value = value
 
-        # Calculate the marker time relative to the self.start_time, and log the marker:
-        marker_time_us = self._time_function_us()
-        self.set_value_list.append({'value': value, 'time_us': marker_time_us})
+        # Log the marker:
+        marker_time_ms = self._time_function_ms()
+        self.set_value_list.append({'value': value, 'time_ms': marker_time_ms})
 
     def send_marker_pulse(self, value, duration_ms=100):
         """Sends a short marker pulse (blocking), and resets to 0 afterwards"""
@@ -239,16 +290,15 @@ class MarkerManager:
         self.set_value(0)
 
     def set_bits(self, bits):
-        """
-        Generic function for toggling bits.
+        """Generic function for toggling bits.
 
-        E.g. markers.set_bits('00000001') sets all bits except the last to LOW.
-
-        This function expects a string of 8 chars representing the bits in big-endian order (MSB left)
+        Args:
+            bits: a string of 8 chars representing the bits in big-endian order (MSG left). E.g.
+                markers.set_bits('00000001') sets all bits except the last to LOW.
         """
 
         # Check that bits consist of string with 8 chars:
-        if not type(bits) == str and len(bits) != 8:
+        if type(bits) != str or len(bits) != 8:
             err_msg = "bits should be str containing characters"
             raise MarkerManagerError(err_msg)
 
@@ -263,12 +313,11 @@ class MarkerManager:
         self.set_value(value)
 
     def set_bit(self, bit, state):
-        """Toggle a single bit.
+        """Toggles a single bit, while leaving other bits intact.
 
-        Toggle a single bit, leave other bits intact.
-
-        Use EVA bit numbering convention: 0 - 7 -> 0 is MSB?
-
+        Args:
+            bit: the bit that should be toggled (0 - 7) -> 0 is LSB
+            state: 'on' or 'off'
         """
 
         if not whole_number(bit) or bit < 0 or bit > 7:
@@ -292,17 +341,18 @@ class MarkerManager:
         self.set_value(value)
 
     def gen_marker_table(self):
-        """
-        Returns three dataframes:
-          - marker dataframe
-                This dataframe has, in chronological order, the marker value, its start and end time, duration and
-                occurrence. The end time and duration are infinite if the current value is non-zero (the current marker
-                has not yet ended).
-          - summary dataframe
-                The summary dataframe has a list of all unique values and how many times they were sent (total
-                occurrences).
-          - error dataframe
-                The error dataframe has a list of all non-fatal errors and their times.
+        """Generates marker tables.
+
+        Returns: Three dataframes:
+                  - marker dataframe
+                        This dataframe has, in chronological order, the marker value, its start and end time, duration
+                        and occurrence. The end time and duration are infinite if the current value is non-zero (the
+                        current marker has not yet ended).
+                  - summary dataframe
+                        The summary dataframe has a list of all unique values and how many times they were sent (total
+                        occurrences).
+                  - error dataframe
+                        The error dataframe has a list of all non-fatal errors and their times.
         """
 
         set_value_df = pandas.DataFrame(self.set_value_list)
@@ -310,7 +360,7 @@ class MarkerManager:
         last_value = None
         marker_counter = 0
 
-        df_cols = ['value', 'start_time_us', 'end_time_us', 'duration_us', 'occurrence']
+        df_cols = ['value', 'start_time_ms', 'end_time_ms', 'duration_ms', 'occurrence']
         marker_df = pandas.DataFrame(columns=df_cols)
 
         # Get marker start and end time
@@ -327,8 +377,8 @@ class MarkerManager:
                 if cur_value == 0 and last_value is not None:
 
                     # end marker
-                    cur_marker_end_time = set_value_df.at[index, 'time_us']
-                    marker_df.at[marker_counter, 'end_time_us'] = cur_marker_end_time
+                    cur_marker_end_time_ms = set_value_df.at[index, 'time_ms']
+                    marker_df.at[marker_counter, 'end_time_ms'] = cur_marker_end_time_ms
                     marker_counter = marker_counter + 1
 
                 # Value changed from 0 to non-zero
@@ -336,32 +386,38 @@ class MarkerManager:
 
                     # start marker:
                     cur_marker_value = cur_value
-                    cur_marker_start_time = set_value_df.at[index, 'time_us']
+                    cur_marker_start_time_ms = set_value_df.at[index, 'time_ms']
                     marker_df.at[marker_counter, 'value'] = cur_marker_value
-                    marker_df.at[marker_counter, 'start_time_us'] = cur_marker_start_time
+                    marker_df.at[marker_counter, 'start_time_ms'] = cur_marker_start_time_ms
 
                 # Value changed from non-zero to non-zero
                 elif cur_value != 0 and last_value != 0:
 
                     # end marker:
-                    cur_marker_end_time = set_value_df.at[index, 'time_us']
-                    marker_df.at[marker_counter, 'end_time_us'] = cur_marker_end_time
+                    cur_marker_end_time_ms = set_value_df.at[index, 'time_ms']
+                    marker_df.at[marker_counter, 'end_time_ms'] = cur_marker_end_time_ms
                     marker_counter = marker_counter + 1
 
                     # start marker:
                     cur_marker_value = cur_value
-                    cur_marker_start_time = set_value_df.at[index, 'time_us']
+                    cur_marker_start_time_ms = set_value_df.at[index, 'time_ms']
                     marker_df.at[marker_counter, 'value'] = cur_marker_value
-                    marker_df.at[marker_counter, 'start_time_us'] = cur_marker_start_time
+                    marker_df.at[marker_counter, 'start_time_ms'] = cur_marker_start_time_ms
 
             last_value = cur_value
 
         # When the last marker was a non-zero value, set end time to infinite
-        if pandas.isna(marker_df["end_time_us"].values[-1]):
-            marker_df["end_time_us"].values[-1] = float('inf')
+        if pandas.isna(marker_df["end_time_ms"].values[-1]):
+            marker_df["end_time_ms"].values[-1] = float('inf')
+
+        # Convert start and end time to seconds:
+        marker_df["start_time_s"] = marker_df["start_time_ms"] / 1000
+        marker_df["end_time_s"] = marker_df["end_time_ms"] / 1000
 
         # Save duration
-        marker_df["duration_us"] = marker_df["end_time_us"] - marker_df["start_time_us"]
+        marker_df["duration_ms"] = marker_df["end_time_ms"] - marker_df["start_time_ms"]
+        # Remove ms columns
+        marker_df.drop(['end_time_ms', 'start_time_ms'], axis=1, inplace=True)
 
         # Save marker occurrences:
         marker_occur_dict = {}
@@ -386,7 +442,10 @@ class MarkerManager:
         return self.marker_df, self.summary_df, self.error_df
 
     def print_marker_table(self):
-        """Prints the marker table, summary table and error table, generated with gen_marker_table."""
+        """Prints marker table, summary table and error table, generated with gen_marker_table."""
+
+        # Import pretty table when necessary:
+        from prettytable import PrettyTable
 
         # Generate most up-to-date marker table
         self.gen_marker_table()
@@ -420,65 +479,79 @@ class MarkerManager:
         print(marker_table)
 
     def save_marker_table(self, filename="", location=os.getcwd(), more_info=""):
-        """Saves the marker table, summary table and error table in one TSV file."""
+        """Saves the marker table, summary table and error table in one TSV file.
 
-        # Generate most up-to-date marker table
-        self.gen_marker_table()
+        Args:
+            filename: The filename the .tsv should have
+            location: The location where the marker table should be saved
+            more_info: More information can be added to the header. Should be a dict with key-value pairs.
+        Raises:
+            MarkerManagerError: When input is not correct or the location has no writing permission.
+        """
+
+        # Check input
+        if not isinstance(filename, str):
+            err_msg = f'filename should be string, got type {type(filename)}'
+            raise MarkerManagerError(err_msg)
+
+        if more_info != "" and not isinstance(more_info, dict):
+            err_msg = f"more_info should be dict, got {type(more_info)}"
+            raise MarkerManagerError(err_msg)
 
         # Check if location has writing permission
         if not os.access(location, os.W_OK):
             err_msg = f'No writing permissions in {location}. Marker table cannot be saved.'
             raise MarkerManagerError(err_msg)
 
+        # Generate most up-to-date marker table
+        self.gen_marker_table()
+
+        # Get cur date and time
+        cur_date_time = datetime.datetime.now()
+
+        if filename == "":
+            # When no filename has been specified, create filename with date
+            date_n = cur_date_time.strftime("%Y%m%d%H%M%S")
+            fn = date_n + '_marker_table.tsv'
         else:
+            fn = filename + '.tsv'
 
-            cur_date_time = datetime.datetime.now()
+        full_fn = location + '\\' + fn
 
-            if filename == "":
+        # Get date
+        date_str = cur_date_time.strftime("%Y-%m-%d %H:%M:%S")
 
-                # Create filename
-                date_n = cur_date_time.strftime("%Y%m%d%H%M%S")
-                fn = date_n + '_marker_table.tsv'
+        # Convert data to series
+        self.summary_df.squeeze()
+        self.marker_df.squeeze()
+        self.error_df.squeeze()
 
-            else:
-
-                fn = filename + '_marker_table.tsv'
-
-            full_fn = location + '\\' + fn
-
-            # Get date
-            date_str = cur_date_time.strftime("%Y-%m-%d %H:%M:%S")
-
-            # Convert data to series
-            self.summary_df.squeeze()
-            self.marker_df.squeeze()
-            self.error_df.squeeze()
-
-            # Write data to tsv file
-            with open(full_fn, 'w', newline='') as file_out:
-                writer = csv.writer(file_out, delimiter='\t')
-                writer.writerow(['Date: ' + date_str])
-                writer.writerow(['Device: ' + self.device_properties.get('Device')])
-                writer.writerow(['Serialno: ' + self.device_properties.get('Serialno')])
-                writer.writerow(['Version: ' + self.device_properties.get('Version')])
-                if type(more_info) == dict:
-                    for key, value in more_info.items():
-                        writer.writerow([key + ': ' + str(value)])
-                writer.writerow('')
-                writer.writerow(['#Summary#'])
-                writer.writerow(self.summary_df.head())
-                writer.writerows(self.summary_df.values)
-                writer.writerow('')
-                writer.writerow(['#Markers#'])
-                writer.writerow(self.marker_df.head())
-                writer.writerows(self.marker_df.values)
-                writer.writerow('')
-                writer.writerow(['#Errors#'])
-                writer.writerow(self.error_df.head())
-                writer.writerows(self.error_df.values)
+        # Write data to tsv file
+        with open(full_fn, 'w', newline='') as file_out:
+            writer = csv.writer(file_out, delimiter='\t')
+            writer.writerow(['Date: ' + date_str])
+            writer.writerow(['Device: ' + self.device_properties.get('Device')])
+            writer.writerow(['Serialno: ' + self.device_properties.get('Serialno')])
+            writer.writerow(['Version: ' + self.device_properties.get('Version')])
+            if isinstance(more_info, dict):
+                for key, value in more_info.items():
+                    writer.writerow([key + ': ' + str(value)])
+            writer.writerow('')
+            writer.writerow(['#Summary#'])
+            writer.writerow(self.summary_df.head())
+            writer.writerows(self.summary_df.values)
+            writer.writerow('')
+            writer.writerow(['#Markers#'])
+            writer.writerow(self.marker_df.head())
+            writer.writerows(self.marker_df.values)
+            writer.writerow('')
+            writer.writerow(['#Errors#'])
+            writer.writerow(self.error_df.head())
+            writer.writerows(self.error_df.values)
 
 
 class MarkerError(Exception):
+    """"Error sending a marker"""
     def __init__(self, message, is_fatal):
         super().__init__(message)
 
@@ -487,18 +560,21 @@ class MarkerError(Exception):
 
 
 class MarkerManagerError(Exception):
+    """Error involving the MarkerManager"""
     def __init__(self, message):
         super().__init__(message)
         self.message = message
 
 
 class FindDeviceError(Exception):
+    """Error finding the device"""
     def __init__(self, message):
         super().__init__(message)
         self.message = message
 
 
 class SerialError(Exception):
+    """Error involving the serial device"""
     def __init__(self, message):
         super().__init__(message)
         self.message = message
@@ -512,9 +588,8 @@ class DeviceInterface(ABC):
 
     Note, the subclass constructors must throw errors if the specified parameters cannot be resolved.
     E.g., no device with the specified address exist, or it it is not of the expected type.
-
     """
-    
+
     @property
     @abstractmethod
     def device_address(self):
@@ -526,13 +601,13 @@ class DeviceInterface(ABC):
     def device_properties(self):
         """
         Returns the properties of the device as follows (values are examples):
-         {"Version":"HW1:SW1.1","Serialno":"S01234","Device":"UsbParMar"}
+         {"Version":"HW1:SW1.1","Serialno":"S01234","Device":"UsbParMarker"}
         """
         pass
 
     @abstractmethod
     def _set_value(self, value):
-        """Sets the value of the marker device. The Markers.set_value
+        """Sets the value of the marker device. The MarkerManager.set_value
         should be used by users since it performs generic checks and
         logs the markers."""
         pass
@@ -545,10 +620,19 @@ class DeviceInterface(ABC):
     @property
     def is_fake(self):
         """Returns a bool indication if the device is faked."""
-        return self.device_address == FAKE_ADDRESS
+        return self.device_address() == FAKE_ADDRESS
 
 
 class SerialDevice(DeviceInterface):
+    """Class for generic Leiden Univ serial device (e.g. Eva, UsbParMarker)
+
+    Attributes:
+        _device_address: the serial device address (e.g. COM1)
+        _device_properties: the device properties (e.g.
+            {"Version":"HW1:SW1.1","Serialno":"S01234","Device":"UsbParMarker"})
+        serial_device = the serial device
+
+    """
 
     def __init__(self, device_address):
 
@@ -583,7 +667,7 @@ class SerialDevice(DeviceInterface):
         else:
             properties = {"Version": "0000000",
                           "Serialno": "0000000",
-                          "Device": "FAKE device"}
+                          "Device": FAKE_DEVICE}
 
         self._device_properties = properties
 
@@ -596,14 +680,16 @@ class SerialDevice(DeviceInterface):
         return self._device_properties
 
     def _set_value(self, value):
-        """Sets the value of the usbParMar device."""
-        if not self._device_address == FAKE_ADDRESS:
+        """Sets the value of the serial device."""
+        if self.is_fake:
+            pass
+        else:
             value_byte = value.to_bytes(1, 'big')
             self.serial_device.write(value_byte)
 
     def _close(self):
         """Closes the serial connection."""
-        if not self._device_address == FAKE_ADDRESS:
+        if not self.is_fake:
             self.serial_device.close()
 
     def command_mode(self):
@@ -631,6 +717,7 @@ class SerialDevice(DeviceInterface):
 
     def send_command(self, command):
         """Sends command to serial device."""
+
         if not self.serial_device.baudrate == 4800:
             err_msg = "Serial device not in command mode."
             raise SerialError(err_msg)
@@ -641,7 +728,6 @@ class SerialDevice(DeviceInterface):
             err_msg = "Command should be a string."
             raise SerialError(err_msg)
         else:
-
             # Send command
             self.serial_device.flushInput()
             self.serial_device.write(command.encode())
@@ -663,22 +749,24 @@ class SerialDevice(DeviceInterface):
             return decoded_data
 
     def get_info(self):
-        """Get info from serial device"""
+        """Get info from serial device."""
         info = self.send_command('V')
         return info
 
     def ping(self):
-        """Ping serial device"""
+        """Ping serial device."""
         ping_answer = self.send_command('P')
         return ping_answer
 
     def get_hw_version(self):
+        """Get hardware version."""
         properties = self.device_properties()
         version = properties.get('Version')
         hw_version = re.search('HW(.*):', version)
         return hw_version.group(1)
 
     def get_sw_version(self):
+        """Get software version."""
         properties = self.device_properties()
         version = properties.get('Version')
         sw_version = re.search('SW(.*)', version)
@@ -686,10 +774,7 @@ class SerialDevice(DeviceInterface):
 
 
 class UsbParMarker(SerialDevice):
-    """Class for the UsbParMarker.
-    Note, the subclass constructors must throw errors if the specified parameters cannot be resolved.
-    E.g., no device with the specified address exist, or it it is not of the expected type.
-    """
+    """Class for the UsbParMarker."""
 
     def leds_on(self):
         """Turns led lights on"""
@@ -710,12 +795,9 @@ class UsbParMarker(SerialDevice):
         return leds_off_answer
 
 
-class EVA(SerialDevice):
-    """Class for EVA device.
-    Note, the subclass constructors must throw errors if the specified parameters cannot be resolved.
-    E.g., no device with the specified address exist, or it it is not of the expected type.
+class Eva(SerialDevice):
+    """Class for Eva device."""
 
-    """
     def set_active_mode(self):
         """Set into active mode"""
         active_mode = self.send_command('A')
@@ -732,15 +814,16 @@ class EVA(SerialDevice):
         return mode
 
 
-def whole_number(value):
-    if isinstance(value, int) or \
-            (isinstance(value, float) and value.is_integer()):
-        return True
-    else:
-        return False
-
-
 # Helper functions:
+def whole_number(value):
+    """Evaluate whether value is whole number."""
+    try:
+        return isinstance(value, int) or \
+                (isinstance(value, float) and value.is_integer())
+    except:
+        raise(MarkerManagerError('error whole number'))
+
+
 def gen_com_filters(device_regex='^.*$',
                     port_regex='^.*$',
                     sn_regex='^.*$',
@@ -757,13 +840,31 @@ def gen_com_filters(device_regex='^.*$',
 
 
 def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=False):
-    """ Finds the address of the device.
+    """Finds the address of the device.
 
-    If UsbParMarker mode or EVA mode, find the COM port. If a device_name was specified, check that the
+    If UsbParMarker mode or Eva mode, find the COM port. If a device_name was specified, check that the
     serial number matches.
     Throw error if multiple COM candidates are available.
 
-    However, if fallback_to_fake is true, don't throw error, just returns the address that toggles faking.  
+    However, if fallback_to_fake is true, don't throw error, just returns the address that toggles faking.
+
+    Args:
+        device_type:
+            string of device type, can only contain one of the devices as defined in available_devices
+        serial_no:
+            string containing the serial number of the device
+        com_port:
+            com port address of the device
+        fallback_to_fake:
+            bool indicating whether a FAKE device should be used when no device can be found
+
+    Returns:
+            info:
+                device: dict containing 'Version', 'Serialno', 'Device'['device']
+                com_port: the com port address
+
+    Raises:
+        FindDeviceError: when fallback_to_fake == False, the FindDeviceError is raised when no device can be found.
 
     """
 
