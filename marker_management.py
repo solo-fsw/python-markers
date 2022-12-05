@@ -122,6 +122,7 @@ class MarkerManager:
                     instance_address = instance.device_interface.device_address()
 
                     if instance_address == device_address and instance_properties['Device'] == device_type:
+                        # TODO: Add IDs here and in definition.
                         err_msg = "class of same type and with same address already exists"
                         raise MarkerManagerError(err_msg)
 
@@ -146,6 +147,7 @@ class MarkerManager:
 
         except Exception as e:
             raise BaseException(f'Unknown error: {e}')
+            # TODO: replace above with MarkerManagerError with ID
 
         # Instantiate the correct DeviceInterface subclass or create general serial device when device is fake
         self.device_type = device_type
@@ -233,6 +235,7 @@ class MarkerManager:
                 err_msg = "Marker value out of range (0 - 255)."
                 is_fatal = True
                 raise MarkerError(err_msg, is_fatal)
+                # TODO: Add id, ex.: MarkOutOfRange
 
             # Send marker:
             try:
@@ -241,6 +244,7 @@ class MarkerManager:
                 err_msg = f"Could not send marker: {e}."
                 is_fatal = False
                 raise MarkerError(err_msg, is_fatal)
+            # TODO: Place after checks.
 
             # The same value should not be sent twice (except 0, that doesn't matter):
             if not len(self.set_value_list) == 0 and not value == 0:
@@ -270,6 +274,7 @@ class MarkerManager:
                 
         except Exception as e:
             raise BaseException(f'Unknown error: {e}')
+            # TODO: Make a marker error from the exeption above. Add id.
 
         # Save marker value
         self._current_value = value
@@ -370,7 +375,9 @@ class MarkerManager:
 
             # Value changes
             if cur_value != last_value:
-
+                
+                # TODO: Add tests for the accuracy f marker logging.
+                
                 # Value changed to 0 and it is not the first value
                 if cur_value == 0 and last_value is not None:
 
@@ -547,9 +554,10 @@ class MarkerError(Exception):
 
 class MarkerManagerError(Exception):
     """Error involving the MarkerManager"""
-    def __init__(self, message):
+    def __init__(self, message, id):
         super().__init__(message)
         self.message = message
+        self.id = id
 
 
 class FindDeviceError(Exception):
@@ -606,7 +614,7 @@ class DeviceInterface(ABC):
     @property
     def is_fake(self):
         """Returns a bool indication if the device is faked."""
-        return self.device_address() == FAKE_ADDRESS
+        return self.device_address == FAKE_ADDRESS
 
 
 class SerialDevice(DeviceInterface):
@@ -736,6 +744,10 @@ class SerialDevice(DeviceInterface):
                 pass
             else:
                 decoded_data = json.loads(decoded_data)
+                
+            # TODO: Implement in send_command: Connect in command mode, send 
+            # command, parse response, reconnect in data mode. When fake, spoof 
+            # the respone. Check in the repo how EVA and UsbParMarker behave.
 
             return decoded_data
 
@@ -783,6 +795,10 @@ class SerialDevice(DeviceInterface):
 class UsbParMarker(SerialDevice):
     """Class for the UsbParMarker."""
 
+
+
+    # TODO: OVerride send_command, add specific behaviour, call superclass send_command.
+    
     def leds_on(self):
         """Turns led lights on"""
         sw_version = self.get_sw_version()
@@ -969,6 +985,7 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
         if not port_hit:
             err_msg = "No device matched the specified COM address."
             raise FindDeviceError(err_msg)
+            # TODO: Add error IDs
         if not device_hit:
             err_msg = "No device matched the specified device type."
             raise FindDeviceError(err_msg)
