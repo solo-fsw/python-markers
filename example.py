@@ -7,11 +7,11 @@
 
 import marker_management as mark
 import time
-import utils.GS_timing as timing
+import GS_timing as timing
 
 
 # Find the address and make the marker object:
-marker_device_type = 'EVA'
+marker_device_type = 'Eva'
 device_info = mark.find_device(device_type=marker_device_type, fallback_to_fake=True)
 marker_address = device_info['com_port']
 marker_manager = mark.MarkerManager(marker_device_type, marker_address, crash_on_marker_errors=False)
@@ -47,5 +47,5 @@ timing.delay(100)
 marker_manager.close()
 
 marker_table, marker_summary, errors = marker_manager.gen_marker_table()
-marker_manager.save_marker_table(filename="subject1", more_info={'key1': 1, 'key2': 2, 'key3': 3})
+marker_manager.save_marker_table()
 marker_manager.print_marker_table()
