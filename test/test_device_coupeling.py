@@ -4,7 +4,7 @@ import marker_management
 
 class TestDeviceCoupeling(unittest.TestCase):
     """
-    Tests things that need to have user interaction
+    Tests functions and checks that need to have a device coupled to the computer to be testable.
     
     """
     def test_duplicate_device(self):
