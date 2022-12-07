@@ -262,10 +262,10 @@ class MarkerManager:
             if not len(self.set_value_list) == 0 and not value == 0:
                 last_value = self.set_value_list[-1]['value']
                 if value == last_value:
-
                     err_msg = f"Marker with value {value} is sent twice in a row."
                     is_fatal = False
-                    raise MarkerError(err_msg, is_fatal)
+                    Eid = "MarkerSentTwice"
+                    raise MarkerError(err_msg, is_fatal, Eid)
 
             # Two values should be separated by at least the concurrent marker threshold:
             if not len(self.set_value_list) == 0:

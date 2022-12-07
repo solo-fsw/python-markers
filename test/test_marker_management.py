@@ -1,4 +1,5 @@
 import unittest
+import time
 import marker_management
 
 class TestTestsFunctional(unittest.TestCase):
@@ -123,7 +124,19 @@ class TestSetValue(unittest.TestCase):
             device.set_value(256)
         self.assertEqual(str(e.exception.id), "ValueOutOfRange")
 
-    
+    def test_marker_value_sent_twice(self):
+        """
+        Tests if the correct error is raised if the same value is sent twice
+
+        """
+        device = marker_management.MarkerManager("UsbParMarker")  # Ensure correct type is used!
+        with self.assertRaises(marker_management.MarkerError) as e:
+            device.set_value(100)
+            time.sleep(2)
+            device.set_value(100)
+        self.assertEqual(str(e.exception.id), "MarkerSentTwice")
+
+    # Test device_interface._set_value by closing the connection in the upload?
 
     # Test if no error is returned on toggeling is_fatal!
 
