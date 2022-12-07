@@ -19,6 +19,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          python -m pip install serial
+          python -m pip install pandas
+          python -m pip install pyserial
           pip install -r requirements.txt
       - name: Run all tests
         run: |

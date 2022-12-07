@@ -124,7 +124,8 @@ class MarkerManager:
                     if instance_address == device_address and instance_properties['Device'] == device_type:
                         # TODO: Add IDs here and in definition.
                         err_msg = "class of same type and with same address already exists"
-                        raise MarkerManagerError(err_msg)
+                        id = "DuplicateDevice"
+                        raise MarkerManagerError(err_msg, id)
 
             if device_type not in available_devices:
                 err_msg = f"device_type can only be {available_devices}, got: {device_type}"
@@ -545,11 +546,11 @@ class MarkerManager:
 
 class MarkerError(Exception):
     """"Error sending a marker"""
-    def __init__(self, message, is_fatal):
+    def __init__(self, message, is_fatal, id):
         super().__init__(message)
-
         self.message = message
         self.is_fatal = is_fatal
+        self.id = id
 
 
 class MarkerManagerError(Exception):
@@ -562,16 +563,18 @@ class MarkerManagerError(Exception):
 
 class FindDeviceError(Exception):
     """Error finding the device"""
-    def __init__(self, message):
+    def __init__(self, message, id):
         super().__init__(message)
         self.message = message
+        self.id = id
 
 
 class SerialError(Exception):
     """Error involving the serial device"""
-    def __init__(self, message):
+    def __init__(self, message, id):
         super().__init__(message)
         self.message = message
+        self.id = id
 
 
 class DeviceInterface(ABC):
