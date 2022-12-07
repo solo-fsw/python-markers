@@ -114,7 +114,7 @@ class MarkerManager:
         try:
 
             # Check if class with same type and address (except fake) already exists
-            if not len(MarkerManager.marker_manager_instances) == 0 and not device_address == FAKE_ADDRESS:
+            if len(MarkerManager.marker_manager_instances) > 0 and device_address != FAKE_ADDRESS:
 
                 for instance in MarkerManager.marker_manager_instances:
 
@@ -124,12 +124,13 @@ class MarkerManager:
                     if instance_address == device_address and instance_properties['Device'] == device_type:
                         # TODO: Add IDs here and in definition.
                         err_msg = "class of same type and with same address already exists"
-                        id = "DuplicateDevice"
-                        raise MarkerManagerError(err_msg, id)
+                        Eid = "DuplicateDevice"
+                        raise MarkerManagerError(err_msg, Eid)
 
             if device_type not in available_devices:
                 err_msg = f"device_type can only be {available_devices}, got: {device_type}"
-                raise MarkerManagerError(err_msg)
+                Eid = "UnsupportedDevice"
+                raise MarkerManagerError(err_msg, Eid)
 
             if not isinstance(device_address, str):
                 err_msg = f"device_address should be str, got {type(device_address)}"
@@ -149,6 +150,10 @@ class MarkerManager:
         except Exception as e:
             raise BaseException(f'Unknown error: {e}')
             # TODO: replace above with MarkerManagerError with ID
+            
+    # Deze try except loop catcht de error, waardoor die niet gezien wordt door de tests
+    # Het is misschien beter om deze weg te halen?
+    # VRAAG01!
 
         # Instantiate the correct DeviceInterface subclass or create general serial device when device is fake
         self.device_type = device_type
@@ -546,35 +551,35 @@ class MarkerManager:
 
 class MarkerError(Exception):
     """"Error sending a marker"""
-    def __init__(self, message, is_fatal, id):
+    def __init__(self, message, is_fatal, Eid):
         super().__init__(message)
         self.message = message
         self.is_fatal = is_fatal
-        self.id = id
+        self.id = Eid
 
 
 class MarkerManagerError(Exception):
     """Error involving the MarkerManager"""
-    def __init__(self, message, id):
+    def __init__(self, message, Eid):
         super().__init__(message)
         self.message = message
-        self.id = id
+        self.id = Eid
 
 
 class FindDeviceError(Exception):
     """Error finding the device"""
-    def __init__(self, message, id):
+    def __init__(self, message, Eid):
         super().__init__(message)
         self.message = message
-        self.id = id
+        self.id = Eid
 
 
 class SerialError(Exception):
     """Error involving the serial device"""
-    def __init__(self, message, id):
+    def __init__(self, message, Eid):
         super().__init__(message)
         self.message = message
-        self.id = id
+        self.id = Eid
 
 
 class DeviceInterface(ABC):
