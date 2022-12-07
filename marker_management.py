@@ -313,13 +313,14 @@ class MarkerManager:
 
         # Check that bits consist of string with 8 chars:
         if type(bits) != str or len(bits) != 8:
-            err_msg = "bits should be str containing characters"
-            raise MarkerManagerError(err_msg)
+            err_msg = "bits should be a string containing 8 characters"
+            Eid = "BitTypeLength"
+            raise MarkerManagerError(err_msg, Eid)
 
         # Check that the 8 chars consist of zeros and/or ones:
         find_all_bits = re.findall('[0-1]', bits)
         if not len(find_all_bits) == 8:
-            err_msg = "bits should be 8 str characters consisting of 0 or 1, e.g. '00000001'"
+            err_msg = "bits can only consist of zeros and ones, e.g. '00000001'"
             raise MarkerManagerError(err_msg)
 
         # Convert bits to int and set value

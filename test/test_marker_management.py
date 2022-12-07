@@ -13,7 +13,7 @@ class TestTestsFunctional(unittest.TestCase):
         
 class TestMarkerManagerInitialisation(unittest.TestCase):
     """
-    Testclass for testing the checks in MarkerManager.__init__()
+    Testclass for testing MarkerManager.__init__()
     
     """
     # Tests fail because of wrong adress???
@@ -95,7 +95,7 @@ class TestMarkerManagerInitialisation(unittest.TestCase):
 
 class TestSetValue(unittest.TestCase):
     """
-    Testclass for testing the checks in MarkerManager.set_value()
+    Testclass for testing MarkerManager.set_value()
     
     Warning: device needs to be coupled and correct type needs to be entered for this test!
     
@@ -149,6 +149,37 @@ class TestSetValue(unittest.TestCase):
     # Test device_interface._set_value by closing the connection in the upload?
 
     # Test if no error is returned on toggeling is_fatal!
+
+    # Test correct appending to set_value_list
+
+class TestSetBits(unittest.TestCase):
+    """
+    Testclass for testing MarkerManager.set_bits()
+    
+    Warning: device needs to be coupled and correct type needs to be entered for this test!
+    
+    """
+    def test_bits_correct_length_and_type(self):
+        """
+        Tests if the correct error is raised if the bits are too long, too short (not lenght 8), or not the correct datatype (only string allowed).
+        
+        """
+        # TODO: MarkerError is nu een MarkerManagerError --> veranderen?
+        device = marker_management.MarkerManager("UsbParMarker")  # Ensure correct type is used!
+        with self.assertRaises(marker_management.MarkerError) as e:
+            device.set_bits('0000000011')
+        self.assertEqual(str(e.exception.id), "BitTypeLength")
+
+        with self.assertRaises(marker_management.MarkerError) as e:
+            device.set_bits('00001')
+        self.assertEqual(str(e.exception.id), "BitTypeLength")
+
+        for bits in [11, 0.5]:
+            with self.assertRaises(marker_management.MarkerError) as e:
+                device.set_bits(bits)
+            self.assertEqual(str(e.exception.id), "BitTypeLength")
+
+
 
 if __name__ == '__main__':
     unittest.main()
