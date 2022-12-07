@@ -27,4 +27,5 @@ jobs:
       - name: Run all tests
         run: |
           pip install unittest
-          python -m unittest -v test.test_logic
+          python -m unittest -v test.test_logic 
+          # Only runs the tests not requiring a real connection 

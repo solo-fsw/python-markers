@@ -14,14 +14,13 @@ class TestDeviceCoupeling(unittest.TestCase):
             """
             # TODO: MarkerManagerError not raised?
             # TODO: Device can not be fake!
-            device_type = "Eva"
-            adress = "12345"
+            device_type = "UsbParMarker"
             # Create first class
-            device1 = marker_management.MarkerManager(device_type, adress)
+            device1 = marker_management.MarkerManager(device_type)
             # Catch the error
             with self.assertRaises(marker_management.MarkerManagerError) as e:
                 # Create duplicate class
-                device2 = marker_management.MarkerManager(device_type, adress)
+                device2 = marker_management.MarkerManager(device_type)
             # Check if the correct error was raised
             self.assertEqual(str(e.exception.id), "DuplicateDevice")
 
