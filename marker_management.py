@@ -315,13 +315,14 @@ class MarkerManager:
         if type(bits) != str or len(bits) != 8:
             err_msg = "bits should be a string containing 8 characters"
             Eid = "BitTypeLength"
-            raise MarkerManagerError(err_msg, Eid)
+            raise MarkerError(err_msg, True, Eid)
 
         # Check that the 8 chars consist of zeros and/or ones:
         find_all_bits = re.findall('[0-1]', bits)
         if not len(find_all_bits) == 8:
             err_msg = "bits can only consist of zeros and ones, e.g. '00000001'"
-            raise MarkerManagerError(err_msg)
+            Eid = "BitElements"
+            raise MarkerError(err_msg, True, Eid)
 
         # Convert bits to int and set value
         value = int(bits, 2)
@@ -337,7 +338,8 @@ class MarkerManager:
 
         if not whole_number(bit) or bit < 0 or bit > 7:
             err_msg = "bit should be whole number between 0 and 7"
-            raise MarkerManagerError(err_msg)
+            Eid = "BitTypeRange"
+            raise MarkerError(err_msg, True, Eid)
 
         # Convert current value to 8 bit string
         cur_bits = format(self._current_value, '#010b')[2:]

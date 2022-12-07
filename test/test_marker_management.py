@@ -179,8 +179,34 @@ class TestSetBits(unittest.TestCase):
                 device.set_bits(bits)
             self.assertEqual(str(e.exception.id), "BitTypeLength")
 
+    def test_bit_0_1(self):
+        """
+        Tests if the correct error is raised if the bits contain other values than zeros and ones.
+
+        """
+        # TODO: MarkerError is nu een MarkerManagerError --> veranderen?
+        device = marker_management.MarkerManager("UsbParMarker")  # Ensure correct type is used!
+        with self.assertRaises(marker_management.MarkerError) as e:
+            device.set_bits("10123010")
+        self.assertEqual(str(e.exception.id), "BitElements")
+
+class TestSetBit(unittest.TestCase):
+    """
+    Testclass for testing MarkerManager.set_bit()
+    
+    Warning: device needs to be coupled and correct type needs to be entered for this test!
+    
+    """
+    def test_bit_index(self):
+        device = marker_management.MarkerManager("UsbParMarker")  # Ensure correct type is used!
+        with self.assertRaises(marker_management.MarkerError) as e:
+            device.set_bit(-1, "on")
+        self.assertEqual(str(e.exception.id), "BitTypeRange")
+
 
 
 if __name__ == '__main__':
     unittest.main()
     # Test if correct input works correctly!
+    # Split tests into hardware and software tests
+    # Use fake in software tests
