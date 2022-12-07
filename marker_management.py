@@ -144,7 +144,8 @@ class MarkerManager:
 
             if not callable(time_function_ms):
                 err_msg = "time_function_ms should be function"
-                raise MarkerManagerError(err_msg)
+                Eid = "TimeFunctionMsCallable"
+                raise MarkerManagerError(err_msg, Eid)
 
         except MarkerManagerError as e:
             raise e

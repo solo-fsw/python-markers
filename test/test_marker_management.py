@@ -46,7 +46,7 @@ class TestMarkerManagerInitialisation(unittest.TestCase):
         Tests if the correct error is raised when the device_adress parameter has an incorrect datatype (anything but string).
 
         """
-        # TODO: MarkerManageError not raised?
+        # TODO: MarkerManagerError not raised?
         # Specify device information
         device_type = "Eva"
         for adress in [112, 0.5]:  # Add list, tuple, range?
@@ -69,7 +69,20 @@ class TestMarkerManagerInitialisation(unittest.TestCase):
                 # Create class with incorrect crash_on_marker_errors type
                 device1 = marker_management.MarkerManager(device_type, device_adress = adress, crash_on_marker_errors = crash)
             self.assertEqual(str(e.exception.id), "CrashOnMarkerErrorsBoolean")
-        
+            
+    def test_time_function_type(self):
+        """
+        Tests if the correct error is raised when the time_function_ms parameter is not callable (a function).
 
+        """
+        device_type = "Eva"
+        adress = "12345"
+        for timeing in ["not_a_function", 4, 1.0]:
+            # Catch the error
+            with self.assertRaises(marker_management.MarkerManagerError) as e:
+                # Create class with incorrect time_function_ms
+                device1 = marker_management.MarkerManager(device_type, adress, time_function_ms = timeing)
+            self.assertEqual(str(e.exception.id), "TimeFunctionMsCallable")
+                
 if __name__ == '__main__':
     unittest.main()
