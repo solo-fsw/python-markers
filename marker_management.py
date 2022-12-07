@@ -122,7 +122,6 @@ class MarkerManager:
                     instance_address = instance.device_interface.device_address()
 
                     if instance_address == device_address and instance_properties['Device'] == device_type:
-                        # TODO: Add IDs here and in definition.
                         err_msg = "class of same type and with same address already exists"
                         Eid = "DuplicateDevice"
                         raise MarkerManagerError(err_msg, Eid)
@@ -151,8 +150,10 @@ class MarkerManager:
             raise e
 
         except Exception as e:
-            raise BaseException(f'Unknown error: {e}')
-            # TODO: replace above with MarkerManagerError with ID
+            err_msg = f'Unknown error in MarkerManage initialization: {e}'
+            Eid = "BaseException"
+            raise MarkerManagerError(err_msg, Eid)
+            # TODO: Dont know how to test this, since we try to catch all possible errors above
             
         # Instantiate the correct DeviceInterface subclass or create general serial device when device is fake
         self.device_type = device_type
