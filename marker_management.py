@@ -276,7 +276,8 @@ class MarkerManager:
                         err_msg = f"Marker with value {value} was sent within {self.concurrent_marker_threshold_ms} " \
                                   f"ms after previous marker with value {last_value}"
                         is_fatal = False
-                        raise MarkerError(err_msg, is_fatal)
+                        Eid = "ConcurrentMarkerThreshold"
+                        raise MarkerError(err_msg, is_fatal, Eid)
 
         except MarkerError as e:
             # Save error
@@ -285,7 +286,9 @@ class MarkerManager:
                 raise e
                 
         except Exception as e:
-            raise BaseException(f'Unknown error: {e}')
+            err_msg = f'Unknown error in set_value: {e}'
+            Eid = "BaseException"
+            raise MarkerError(f'Unknown error: {e}', True, Eid)
             # TODO: Make a marker error from the exeption above. Add id.
 
         # Save marker value

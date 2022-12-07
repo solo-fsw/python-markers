@@ -136,6 +136,16 @@ class TestSetValue(unittest.TestCase):
             device.set_value(100)
         self.assertEqual(str(e.exception.id), "MarkerSentTwice")
 
+    def test_concurrent_marker_threshold(self):
+        """
+        Tests if the correct error is raised if the time between sending two markers is less than concurrent_marker_threshold (standard value: 10ms). 
+
+        """
+        device = marker_management.MarkerManager("UsbParMarker")  # Ensure correct type is used!
+        with self.assertRaises(marker_management.MarkerError) as e:
+            device.set_value(100)
+            device.set_value(150)
+        self.assertEqual(str(e.exception.id), "ConcurrentMarkerThreshold")
     # Test device_interface._set_value by closing the connection in the upload?
 
     # Test if no error is returned on toggeling is_fatal!
