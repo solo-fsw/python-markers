@@ -100,10 +100,33 @@ class TestSetValue(unittest.TestCase):
     
     """
     def test_marker_value_whole_number(self):
-        device = marker_management.MarkerManager("UsbParMarker")  # Incorrect adress!
+        """
+        Tests if the correct error is raised if the marker_value is not the allowed type (int).
+
+        """
+        device = marker_management.MarkerManager("UsbParMarker")  # Ensure correct type is used!
         with self.assertRaises(marker_management.MarkerError) as e:
             device.set_value(66.6)
         self.assertEqual(str(e.exception.id), "ValueWholeNumber")
+
+    def test_marker_value_range(self):
+        """
+        Tests if the correct error is raised if the marker_value is outside the allowed range (0 - 255).
+        
+        """
+        device = marker_management.MarkerManager("UsbParMarker")  # Ensure correct type is used!
+        with self.assertRaises(marker_management.MarkerError) as e:
+            device.set_value(-1)
+        self.assertEqual(str(e.exception.id), "ValueOutOfRange")
+
+        with self.assertRaises(marker_management.MarkerError) as e:
+            device.set_value(256)
+        self.assertEqual(str(e.exception.id), "ValueOutOfRange")
+
     
+
+    # Test if no error is returned on toggeling is_fatal!
+
 if __name__ == '__main__':
     unittest.main()
+    # Test if correct input works correctly!

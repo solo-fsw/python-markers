@@ -245,7 +245,8 @@ class MarkerManager:
             if value > 255 or value < 0:
                 err_msg = "Marker value out of range (0 - 255)."
                 is_fatal = True
-                raise MarkerError(err_msg, is_fatal)
+                Eid = "ValueOutOfRange"
+                raise MarkerError(err_msg, is_fatal, Eid)
                 # TODO: Add id, ex.: MarkOutOfRange
 
             # Send marker:

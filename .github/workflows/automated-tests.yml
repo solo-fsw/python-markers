@@ -22,6 +22,7 @@ jobs:
           python -m pip install serial
           python -m pip install pandas
           python -m pip install pyserial
+          python -m pip install prettytable
           pip install -r requirements.txt
       - name: Run all tests
         run: |
