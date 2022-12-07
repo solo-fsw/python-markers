@@ -24,4 +24,3 @@ jobs:
         run: |
           pip install unittest
           python -m unittest discover -v
-          # All unittests should be in the test directory
