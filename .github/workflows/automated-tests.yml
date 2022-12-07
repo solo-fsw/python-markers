@@ -22,8 +22,8 @@ jobs:
           python -m pip install pandas
           python -m pip install pyserial
           python -m pip install prettytable
+          python -m pip install unittest
       - name: Run all tests
         run: |
-          pip install unittest
           python -m unittest -v test.test_logic 
           # Only runs the tests not requiring a real connection 
