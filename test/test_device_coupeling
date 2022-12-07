@@ -1,0 +1,29 @@
+import unittest
+import time
+import marker_management
+
+class TestDeviceCoupeling(unittest.TestCase):
+    """
+    Tests things that need to have user interaction
+    
+    """
+    def test_duplicate_device(self):
+            """
+            Tests if the correct error is raised when the same device (identical type and adress) is added twice.
+
+            """
+            # TODO: MarkerManagerError not raised?
+            # TODO: Device can not be fake!
+            device_type = "Eva"
+            adress = "12345"
+            # Create first class
+            device1 = marker_management.MarkerManager(device_type, adress)
+            # Catch the error
+            with self.assertRaises(marker_management.MarkerManagerError) as e:
+                # Create duplicate class
+                device2 = marker_management.MarkerManager(device_type, adress)
+            # Check if the correct error was raised
+            self.assertEqual(str(e.exception.id), "DuplicateDevice")
+
+if __name__ == '__main__':
+    unittest.main()

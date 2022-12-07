@@ -27,4 +27,4 @@ jobs:
       - name: Run all tests
         run: |
           pip install unittest
-          python -m unittest discover -v
+          python -m unittest -v test.test_logic

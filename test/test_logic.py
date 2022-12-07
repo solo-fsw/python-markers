@@ -16,24 +16,8 @@ class TestMarkerManagerInitialisation(unittest.TestCase):
     Testclass for testing MarkerManager.__init__()
     
     """
-    # Tests fail because of wrong adress???
-    def test_duplicate_device(self):
-        """
-        Tests if the correct error is raised when the same device (identical type and adress) is added twice.
 
-        """
-        # TODO: MarkerManagerError not raised?
-        # Specify device information
-        device_type = "Eva"
-        adress = "12345"
-        # Create first class
-        device1 = marker_management.MarkerManager(device_type, device_adress = adress)
-        # Catch the error
-        with self.assertRaises(marker_management.MarkerManagerError) as e:
-            # Create duplicate class
-            device2 = marker_management.MarkerManager(device_type, device_adress = adress)
-        # Check if the correct error was raised
-        self.assertEqual(str(e.exception.id), "DuplicateDevice")
+    device_type = "FAKE DEVICE"
         
     def test_unsupported_device(self):
         """
@@ -42,11 +26,10 @@ class TestMarkerManagerInitialisation(unittest.TestCase):
         """
         # Specify device information
         device_type = "NONEXISTANT"
-        adress = "12345"
         # Catch the error
         with self.assertRaises(marker_management.MarkerManagerError) as e:
             # Create unsupported device
-            device1 = marker_management.MarkerManager(device_type, device_adress = adress)
+            device = marker_management.MarkerManager(device_type)
         # Check if the correct error was raised
         self.assertEqual(str(e.exception.id), "UnsupportedDevice")
         
@@ -57,12 +40,11 @@ class TestMarkerManagerInitialisation(unittest.TestCase):
         """
         # TODO: MarkerManagerError not raised?
         # Specify device information
-        device_type = "Eva"
         for adress in [112, 0.5]:  # Add list, tuple, range?
             # Catch the error
             with self.assertRaises(marker_management.MarkerManagerError) as e:
                 # Create class with incorrect adress type
-                device1 = marker_management.MarkerManager(device_type, device_adress = adress)
+                device = marker_management.MarkerManager(TestMarkerManagerInitialisation.device_type, adress)
             self.assertEqual(str(e.exception.id), "DeviceAdressString")
 
     def test_crash_on_marker_errors_type(self):
@@ -70,13 +52,11 @@ class TestMarkerManagerInitialisation(unittest.TestCase):
         Tests if the correct error is raised when the crash_on_marker_errors parameter has an incorrect datatype (anything but boolean).
 
         """
-        device_type = "Eva"
-        adress = "12345"
         for crash in ["Nope", 0, 1.0]:
             # Catch the error
             with self.assertRaises(marker_management.MarkerManagerError) as e:
                 # Create class with incorrect crash_on_marker_errors type
-                device1 = marker_management.MarkerManager(device_type, device_adress = adress, crash_on_marker_errors = crash)
+                device = marker_management.MarkerManager(TestMarkerManagerInitialisation.device_type, crash_on_marker_errors = crash)
             self.assertEqual(str(e.exception.id), "CrashOnMarkerErrorsBoolean")
             
     def test_time_function_type(self):
@@ -84,13 +64,11 @@ class TestMarkerManagerInitialisation(unittest.TestCase):
         Tests if the correct error is raised when the time_function_ms parameter is not callable (a function).
 
         """
-        device_type = "Eva"
-        adress = "12345"
         for timeing in ["not_a_function", 4, 1.0]:
             # Catch the error
             with self.assertRaises(marker_management.MarkerManagerError) as e:
                 # Create class with incorrect time_function_ms
-                device1 = marker_management.MarkerManager(device_type, adress, time_function_ms = timeing)
+                device1 = marker_management.MarkerManager(TestMarkerManagerInitialisation.device_type, time_function_ms = timeing)
             self.assertEqual(str(e.exception.id), "TimeFunctionMsCallable")
 
 class TestSetValue(unittest.TestCase):
@@ -100,12 +78,15 @@ class TestSetValue(unittest.TestCase):
     Warning: device needs to be coupled and correct type needs to be entered for this test!
     
     """
+
+    device_type = "FAKE DEVICE"
+
     def test_marker_value_whole_number(self):
         """
         Tests if the correct error is raised if the marker_value is not the allowed type (int).
 
         """
-        device = marker_management.MarkerManager("UsbParMarker")  # Ensure correct type is used!
+        device = marker_management.MarkerManager(TestSetValue.device_type)
         with self.assertRaises(marker_management.MarkerError) as e:
             device.set_value(66.6)
         self.assertEqual(str(e.exception.id), "ValueWholeNumber")
@@ -115,7 +96,7 @@ class TestSetValue(unittest.TestCase):
         Tests if the correct error is raised if the marker_value is outside the allowed range (0 - 255).
         
         """
-        device = marker_management.MarkerManager("UsbParMarker")  # Ensure correct type is used!
+        device = marker_management.MarkerManager(TestSetValue.device_type)
         with self.assertRaises(marker_management.MarkerError) as e:
             device.set_value(-1)
         self.assertEqual(str(e.exception.id), "ValueOutOfRange")
@@ -129,7 +110,7 @@ class TestSetValue(unittest.TestCase):
         Tests if the correct error is raised if the same value is sent twice
 
         """
-        device = marker_management.MarkerManager("UsbParMarker")  # Ensure correct type is used!
+        device = marker_management.MarkerManager(TestSetValue.device_type)
         with self.assertRaises(marker_management.MarkerError) as e:
             device.set_value(100)
             time.sleep(2)
@@ -141,7 +122,7 @@ class TestSetValue(unittest.TestCase):
         Tests if the correct error is raised if the time between sending two markers is less than concurrent_marker_threshold (standard value: 10ms). 
 
         """
-        device = marker_management.MarkerManager("UsbParMarker")  # Ensure correct type is used!
+        device = marker_management.MarkerManager(TestSetValue.device_type)
         with self.assertRaises(marker_management.MarkerError) as e:
             device.set_value(100)
             device.set_value(150)
@@ -159,13 +140,15 @@ class TestSetBits(unittest.TestCase):
     Warning: device needs to be coupled and correct type needs to be entered for this test!
     
     """
+
+    device_type = "FAKE DEVICE"
+
     def test_bits_correct_length_and_type(self):
         """
         Tests if the correct error is raised if the bits are too long, too short (not lenght 8), or not the correct datatype (only string allowed).
         
         """
-        # TODO: MarkerError is nu een MarkerManagerError --> veranderen?
-        device = marker_management.MarkerManager("UsbParMarker")  # Ensure correct type is used!
+        device = marker_management.MarkerManager(TestSetBits.device_type)
         with self.assertRaises(marker_management.MarkerError) as e:
             device.set_bits('0000000011')
         self.assertEqual(str(e.exception.id), "BitTypeLength")
@@ -184,8 +167,7 @@ class TestSetBits(unittest.TestCase):
         Tests if the correct error is raised if the bits contain other values than zeros and ones.
 
         """
-        # TODO: MarkerError is nu een MarkerManagerError --> veranderen?
-        device = marker_management.MarkerManager("UsbParMarker")  # Ensure correct type is used!
+        device = marker_management.MarkerManager(TestSetBits.device_type)
         with self.assertRaises(marker_management.MarkerError) as e:
             device.set_bits("10123010")
         self.assertEqual(str(e.exception.id), "BitElements")
@@ -197,12 +179,21 @@ class TestSetBit(unittest.TestCase):
     Warning: device needs to be coupled and correct type needs to be entered for this test!
     
     """
+
+    device_type = "FAKE DEVICE"
+
     def test_bit_index(self):
-        device = marker_management.MarkerManager("UsbParMarker")  # Ensure correct type is used!
+        device = marker_management.MarkerManager(TestSetBit.device_type)
         with self.assertRaises(marker_management.MarkerError) as e:
             device.set_bit(-1, "on")
         self.assertEqual(str(e.exception.id), "BitTypeRange")
 
+        with self.assertRaises(marker_management.MarkerError) as e:
+            device.set_bit(0.7, "on")
+        self.assertEqual(str(e.exception.id), "BitTypeRange")
+
+    def test_bit_state(self):
+        device = marker_management.MarkerManager(TestSetBit.device_type)
 
 
 if __name__ == '__main__':
