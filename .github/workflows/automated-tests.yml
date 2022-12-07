@@ -22,7 +22,6 @@ jobs:
           python -m pip install pandas
           python -m pip install pyserial
           python -m pip install prettytable
-          python -m pip install unittest
       - name: Run all tests
         run: |
           python -m unittest -v test.test_logic 
