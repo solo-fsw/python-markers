@@ -111,6 +111,7 @@ class MarkerManager:
         """
 
         # MarkerManager checks
+        # TODO: device_type == None?
         try:
 
             # Check if class with same type and address (except fake) already exists
@@ -226,6 +227,9 @@ class MarkerManager:
 
         # Get current time:
         cur_time = self._time_function_ms()
+        # TODO: Incorrect inputs currently crash the program
+        #   Example: type(value) == str
+        #   Example: value == None
 
         # Check and send marker:
         try:
@@ -234,7 +238,8 @@ class MarkerManager:
             if not whole_number(value):
                 err_msg = "Marker value should be whole number."
                 is_fatal = True
-                raise MarkerError(err_msg, is_fatal)
+                Eid = "ValueWholeNumber"
+                raise MarkerError(err_msg, is_fatal, Eid)
             
             # Value should be between 0 and 255:
             if value > 255 or value < 0:

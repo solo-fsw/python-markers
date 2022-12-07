@@ -2,11 +2,19 @@ import unittest
 import marker_management
 
 class TestTestsFunctional(unittest.TestCase):
-
+    """
+    Temporary testclass for ensuring the tests are functional and can be found by the automatic testing github action
+    
+    """
+    
     def test_tests(self):
         self.assertEqual(1, 1)
         
 class TestMarkerManagerInitialisation(unittest.TestCase):
+    """
+    Testclass for testing the checks in MarkerManager.__init__()
+    
+    """
     # Tests fail because of wrong adress???
     def test_duplicate_device(self):
         """
@@ -83,6 +91,19 @@ class TestMarkerManagerInitialisation(unittest.TestCase):
                 # Create class with incorrect time_function_ms
                 device1 = marker_management.MarkerManager(device_type, adress, time_function_ms = timeing)
             self.assertEqual(str(e.exception.id), "TimeFunctionMsCallable")
-                
+
+class TestSetValue(unittest.TestCase):
+    """
+    Testclass for testing the checks in MarkerManager.set_value()
+    
+    Warning: device needs to be coupled and correct type needs to be entered for this test!
+    
+    """
+    def test_marker_value_whole_number(self):
+        device = marker_management.MarkerManager("UsbParMarker")  # Incorrect adress!
+        with self.assertRaises(marker_management.MarkerError) as e:
+            device.set_value(66.6)
+        self.assertEqual(str(e.exception.id), "ValueWholeNumber")
+    
 if __name__ == '__main__':
     unittest.main()
