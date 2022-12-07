@@ -194,10 +194,11 @@ class TestSetBit(unittest.TestCase):
 
     def test_bit_state(self):
         device = marker_management.MarkerManager(TestSetBit.device_type)
+        with self.assertRaises(marker_management.MarkerError) as e:
+            device.set_bit(4, "zero please")
+        self.assertEqual(str(e.exception.id), "BitState")
 
 
 if __name__ == '__main__':
     unittest.main()
-    # Test if correct input works correctly!
-    # Split tests into hardware and software tests
-    # Use fake in software tests
+    # TODO: Test if correct input works correctly!

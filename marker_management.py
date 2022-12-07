@@ -351,7 +351,8 @@ class MarkerManager:
             new_bits = cur_bits[:bit] + '0' + cur_bits[bit + 1:]
         else:
             err_msg = "set_bit state can only be 'on' or 'off'"
-            raise MarkerManagerError(err_msg)
+            Eid = "BitState"
+            raise MarkerError(err_msg, True, Eid)
 
         # Convert 8 bit string to int and set_value:
         value = int(new_bits, 2)
