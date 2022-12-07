@@ -15,7 +15,7 @@ class TestMarkerManagerInitialisation(unittest.TestCase):
         """
         # Specify device information
         device_type = "Eva"
-        adress = 12345
+        adress = "12345"
         # Create first class
         device1 = marker_management.MarkerManager(device_type, device_adress = adress)
         # Catch the error
@@ -23,7 +23,7 @@ class TestMarkerManagerInitialisation(unittest.TestCase):
             # Create duplicate class
             device2 = marker_management.MarkerManager(device_type, device_adress = adress)
         # Check if the correct error was raised
-        self.assertEquals(str(e.id), "DuplicateDevice")
+        self.assertEqual(str(e.exception.id), "DuplicateDevice")
         
     def test_unsupported_device(self):
         """
@@ -31,16 +31,19 @@ class TestMarkerManagerInitialisation(unittest.TestCase):
         
         """
         # Specify device information
-        device_type = "Eva"
-        adress = 12345
+        device_type = "NONEXISTANT"
+        adress = "12345"
         # Catch the error
         with self.assertRaises(marker_management.MarkerManagerError) as e:
             # Create unsupported device
             device1 = marker_management.MarkerManager(device_type, device_adress = adress)
         # Check if the correct error was raised
-        self.assertEquals(str(e.id), "UnsupportedDevice")
+        self.assertEqual(str(e.exception.id), "UnsupportedDevice")
         
-    def test_
+    def test_device_adress_type(self):
+        # Specify device information
+        device_type = "Eva"
+        adress = "12345"
 
 if __name__ == '__main__':
     unittest.main()

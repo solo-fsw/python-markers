@@ -134,7 +134,8 @@ class MarkerManager:
 
             if not isinstance(device_address, str):
                 err_msg = f"device_address should be str, got {type(device_address)}"
-                raise MarkerManagerError(err_msg)
+                Eid = "DeviceAdressString"
+                raise MarkerManagerError(err_msg, Eid)
 
             if not isinstance(crash_on_marker_errors, bool):
                 err_msg = f"report_marker_errors should be bool, got {type(crash_on_marker_errors)}"
