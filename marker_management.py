@@ -154,7 +154,6 @@ class MarkerManager:
             err_msg = f'Unknown error in MarkerManage initialization: {e}'
             Eid = "BaseException"
             raise MarkerManagerError(err_msg, Eid)
-            # TODO: Dont know how to test this, since we try to catch all possible errors above
             
         # Instantiate the correct DeviceInterface subclass or create general serial device when device is fake
         self.device_type = device_type
@@ -247,7 +246,6 @@ class MarkerManager:
                 is_fatal = True
                 Eid = "ValueOutOfRange"
                 raise MarkerError(err_msg, is_fatal, Eid)
-                # TODO: Add id, ex.: MarkOutOfRange
 
             # Send marker:
             try:
@@ -256,7 +254,7 @@ class MarkerManager:
                 err_msg = f"Could not send marker: {e}."
                 is_fatal = False
                 raise MarkerError(err_msg, is_fatal)
-            # TODO: Place after checks.
+            # TODO: refactor: Place after checks.
 
             # The same value should not be sent twice (except 0, that doesn't matter):
             if not len(self.set_value_list) == 0 and not value == 0:
@@ -289,7 +287,6 @@ class MarkerManager:
             err_msg = f'Unknown error in set_value: {e}'
             Eid = "BaseException"
             raise MarkerError(f'Unknown error: {e}', True, Eid)
-            # TODO: Make a marker error from the exeption above. Add id.
 
         # Save marker value
         self._current_value = value
@@ -395,7 +392,7 @@ class MarkerManager:
             # Value changes
             if cur_value != last_value:
                 
-                # TODO: Add tests for the accuracy f marker logging.
+                # TODO: Add tests for the accuracy of marker logging.
                 
                 # Value changed to 0 and it is not the first value
                 if cur_value == 0 and last_value is not None:

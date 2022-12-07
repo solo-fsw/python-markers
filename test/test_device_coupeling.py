@@ -26,3 +26,4 @@ class TestDeviceCoupeling(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+    # TODO: add more tests (find_device)

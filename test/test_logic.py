@@ -127,11 +127,11 @@ class TestSetValue(unittest.TestCase):
             device.set_value(100)
             device.set_value(150)
         self.assertEqual(str(e.exception.id), "ConcurrentMarkerThreshold")
-    # Test device_interface._set_value by closing the connection in the upload?
+    # TODO: Test device_interface._set_value by closing the connection in the upload?
 
-    # Test if no error is returned on toggeling is_fatal!
+    # TODO: Test if no error is returned on toggeling is_fatal!
 
-    # Test correct appending to set_value_list
+    # TODO: Test correct appending to set_value_list
 
 class TestSetBits(unittest.TestCase):
     """
@@ -198,7 +198,10 @@ class TestSetBit(unittest.TestCase):
             device.set_bit(4, "zero please")
         self.assertEqual(str(e.exception.id), "BitState")
 
+# TODO: Test marker logging
+
 
 if __name__ == '__main__':
     unittest.main()
-    # TODO: Test if correct input works correctly!
+    # TODO: Test if correct input works without errors and returns correct values!
+    # TODO: Test general errors
