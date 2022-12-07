@@ -139,7 +139,8 @@ class MarkerManager:
 
             if not isinstance(crash_on_marker_errors, bool):
                 err_msg = f"report_marker_errors should be bool, got {type(crash_on_marker_errors)}"
-                raise MarkerManagerError(err_msg)
+                Eid = "CrashOnMarkerErrorsBoolean"
+                raise MarkerManagerError(err_msg, Eid)
 
             if not callable(time_function_ms):
                 err_msg = "time_function_ms should be function"
@@ -152,10 +153,6 @@ class MarkerManager:
             raise BaseException(f'Unknown error: {e}')
             # TODO: replace above with MarkerManagerError with ID
             
-    # Deze try except loop catcht de error, waardoor die niet gezien wordt door de tests
-    # Het is misschien beter om deze weg te halen?
-    # VRAAG01!
-
         # Instantiate the correct DeviceInterface subclass or create general serial device when device is fake
         self.device_type = device_type
         if self.device_type == 'UsbParMarker':
