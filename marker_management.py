@@ -28,6 +28,8 @@ Notes:
 # - LUXURY: Evaluate browser based updating of devices.
 # - Check set_bit LSB, MSB
 # - sendcommand should include everything, close if necessary, open in command, send command, close, reopen in data mode
+# - Include min/max/avg/total in the summary table
+# - Include a version of this library and include the version in the header of the tsv marker table file
 
 from abc import ABC, abstractmethod
 import GS_timing as timing
@@ -446,6 +448,7 @@ class MarkerManager:
             marker_df.loc[index, "occurrence"] = occurrence
 
         # Create summary table
+        # TODO: add mean duration, min duration, max duration and total duration
         summary_df = marker_df[['value', 'occurrence']]
         summary_df = summary_df.drop_duplicates(subset=['value'], keep='last')
 
@@ -536,6 +539,7 @@ class MarkerManager:
         error_df.squeeze()
 
         # Write data to tsv file
+        # TODO: add version of library to header
         with open(full_fn, 'w', newline='') as file_out:
             writer = csv.writer(file_out, delimiter='\t')
             writer.writerow(['Date: ' + date_str])
