@@ -453,6 +453,7 @@ class MarkerManager:
         summary_df = summary_df.drop_duplicates(subset=['value'], keep='last')
 
         # Create error table
+        # TODO: convert ms to s for error_df and rename the column
         error_df = pandas.DataFrame(self.error_list)
 
         return marker_df, summary_df, error_df
