@@ -458,8 +458,9 @@ class MarkerManager:
         # Create error table
         # TODO: rename column time_s to ...?
         error_df = pandas.DataFrame(self.error_list)
-        error_df["time_s"] = error_df["time_ms"] / 1000
-        error_df.drop("time_ms", axis = 1, inplace=True)
+        if len(self.error_list) > 0:
+            error_df["time_s"] = error_df["time_ms"] / 1000
+            error_df.drop("time_ms", axis = 1, inplace=True)
 
         return marker_df, summary_df, error_df
 
