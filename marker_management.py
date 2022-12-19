@@ -922,7 +922,8 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
 
     # Check device type
     if device_type not in available_devices and device_type != '':
-        raise FindDeviceError(f"Only {available_devices} supported.")
+        Eid = "UnsupportedDevice"
+        raise FindDeviceError(f"Only {available_devices} supported.", Eid)
 
     info = {}
 
