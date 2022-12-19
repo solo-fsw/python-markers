@@ -456,8 +456,10 @@ class MarkerManager:
         summary_df = summary_df.drop_duplicates(subset=['value'], keep='last')
 
         # Create error table
-        # TODO: convert ms to s for error_df and rename the column
+        # TODO: rename column time_s to ...?
         error_df = pandas.DataFrame(self.error_list)
+        error_df["time_s"] = error_df["time_ms"] / 1000
+        error_df.drop("time_ms", axis = 1, inplace=True)
 
         return marker_df, summary_df, error_df
 
@@ -543,7 +545,7 @@ class MarkerManager:
         error_df.squeeze()
 
         # Write data to tsv file
-        # TODO: add version of library to header
+        # TODO: add version of library to header (how do you want library version defined? In code or somewhere else?)
         with open(full_fn, 'w', newline='') as file_out:
             writer = csv.writer(file_out, delimiter='\t')
             writer.writerow(['Date: ' + date_str])
