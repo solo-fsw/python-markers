@@ -642,7 +642,7 @@ class DeviceInterface(ABC):
     @property
     def is_fake(self):
         """Returns a bool indication if the device is faked."""
-        return self.device_address() == FAKE_ADDRESS
+        return self.device_address == FAKE_ADDRESS
 
 
 class SerialDevice(DeviceInterface):
@@ -693,23 +693,19 @@ class SerialDevice(DeviceInterface):
 
         self._device_properties = properties
 
-    # TODO: Assess if the methods below need the @property spec. The fact that they don't have them may be
-    # the reason why they need to be evald as functions instead of properties.
-    
-    # @property
+    @property
     def device_address(self):
         """Returns device address."""
         return self._device_address
 
+    @property
     def device_properties(self):
         """Returns device properties."""
         return self._device_properties
 
     def _set_value(self, value):
         """Sets the value of the serial device."""
-        if self.is_fake:
-            pass
-        else:
+        if not self.is_fake:
             value_byte = value.to_bytes(1, 'big')
             self.serial_device.write(value_byte)
 
@@ -804,7 +800,7 @@ class SerialDevice(DeviceInterface):
     def get_hw_version(self):
         """Get hardware version."""
         if not self.is_fake:
-            properties = self.device_properties()
+            properties = self.device_properties
             version = properties.get('Version')
             hw_version = re.search('HW(.*):', version)
             hw_version = hw_version.group(1)
@@ -815,7 +811,7 @@ class SerialDevice(DeviceInterface):
     def get_sw_version(self):
         """Get software version."""
         if not self.is_fake:
-            properties = self.device_properties()
+            properties = self.device_properties
             version = properties.get('Version')
             sw_version = re.search('SW(.*)', version)
             sw_version = sw_version.group(1)
