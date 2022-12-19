@@ -1030,11 +1030,6 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
             Eid = "NoSerialMatch"
             raise FindDeviceError(err_msg, Eid)
 
-        if not connected:
-            err_msg = "No suitable COM devices found."
-            Eid = "NoConnectionMade"
-            raise FindDeviceError(err_msg, Eid)
-
         if multiple_hit:
             err_msg = "Multiple matching devices found."
             FindDeviceError(err_msg)
