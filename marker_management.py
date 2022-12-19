@@ -249,15 +249,6 @@ class MarkerManager:
                 Eid = "ValueOutOfRange"
                 raise MarkerError(err_msg, is_fatal, Eid)
 
-            # Send marker:
-            try:
-                self.device_interface._set_value(value)
-            except Exception as e:
-                err_msg = f"Could not send marker: {e}."
-                is_fatal = False
-                raise MarkerError(err_msg, is_fatal)
-            # TODO: refactor: Place after checks.
-
             # The same value should not be sent twice (except 0, that doesn't matter):
             if not len(self.set_value_list) == 0 and not value == 0:
                 last_value = self.set_value_list[-1]['value']
@@ -278,6 +269,15 @@ class MarkerManager:
                         is_fatal = False
                         Eid = "ConcurrentMarkerThreshold"
                         raise MarkerError(err_msg, is_fatal, Eid)
+
+            # Send marker:
+            try:
+                self.device_interface._set_value(value)
+
+            except Exception as e:
+                err_msg = f"Could not send marker: {e}."
+                is_fatal = False
+                raise MarkerError(err_msg, is_fatal)
 
         except MarkerError as e:
             # Save error
