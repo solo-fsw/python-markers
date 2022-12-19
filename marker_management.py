@@ -1014,7 +1014,6 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
     try:
 
         # Check if any port was found:
-        # TODO: Add error IDs
         if not port_hit:
             err_msg = "No device matched the specified COM address."
             Eid = "NoComMatch"
@@ -1030,9 +1029,11 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
             Eid = "NoSerialMatch"
             raise FindDeviceError(err_msg, Eid)
 
+        # TODO: add tests
         if multiple_hit:
             err_msg = "Multiple matching devices found."
-            FindDeviceError(err_msg)
+            Eid = "MultipleConnections"
+            FindDeviceError(err_msg, Eid)
 
         if connection_error:
             err_msg = f'Could not connect to "{connection_error_port}" because: {connection_error_info}'

@@ -293,9 +293,21 @@ class TestFindDevice(unittest.TestCase):
             with patch("marker_management.comports") as mock_comports:
                 mock_comports.return_value = [("A", "1a", "USB VID:PID=2341:1")]
                 with patch("marker_management.SerialDevice") as mock_serial:
-                    mock_serial.return_value = {"Device": "Matches", "Serialno": ""}
+                    mock_serial.return_value = {"Device": "UsbParMarker", "Serialno": ""}
                     answer = marker_management.find_device(device_type="UsbParMarker")  # TODO: Ensure UsbParmMarker is not connected while running this test
-        self.assertEqual(str(e.exception.id), "NoDeviceMatch")
+                    mock_serial.assert_called()
+                    # TODO: Doesnt return into info["device"] --> first found error ==> deviceError
+        self.assertEqual(str(e.exception.id), "NoSerialMatch")
+
+    def test_multiple_connections(self):
+        with self.assertRaises(marker_management.FindDeviceError) as e:
+            with patch("marker_management.comports") as mock_comports:
+                mock_comports.return_value = [("A", "1a", "USB VID:PID=2341:1"), ("B", "2b", "USB VID:PID=2341:2")]
+                with patch("marker_management.SerialDevice") as mock_serial:
+                    mock_serial.side_effect = [{"Device": "UsbParMarker", "Serialno": "1"}, {"Device": "UsbParMarker", "Serialno": "2"}]
+                    answer = marker_management.find_device(device_type="UsbParMarker")  # TODO: Ensure UsbParmMarker is not connected while running this test
+                    # TODO: Doesnt return into info["device"] --> first found error ==> deviceError
+        self.assertEqual(str(e.exception.id), "MultipleConnections")
 
 if __name__ == '__main__':
     unittest.main()
