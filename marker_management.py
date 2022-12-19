@@ -375,7 +375,6 @@ class MarkerManager:
         set_value_df = pandas.DataFrame(self.set_value_list)
 
         # Assumes that the first value is always set to 0 at init.
-        # TODO: Add tests for the accuracy of marker logging.
         # TODO: check if hard crash necessary
         assert set_value_df['value'].iloc[0] == 0
 
@@ -442,8 +441,18 @@ class MarkerManager:
             marker_df.loc[index, "occurrence"] = occurrence
 
         # Create summary table
-        # TODO: add mean duration, min duration, max duration and total duration
         summary_df = marker_df[['value', 'occurrence']]
+        summary_df["mean_duration"] = None
+        summary_df["min_duration"] = None
+        summary_df["max_duration"] = None
+        summary_df["total_duration"] = None
+        for index, val in enumerate(summary_df.value):
+            all_durations = marker_df[summary_df["value"] == val].duration_ms.tolist()
+            summary_df.loc[index, 'mean_duration'] = (sum(all_durations))/len(all_durations)
+            summary_df.loc[index, 'min_duration'] = min(all_durations)
+            summary_df.loc[index, 'max_duration'] = max(all_durations)
+            summary_df.loc[index, 'total_duration'] = sum(all_durations)
+
         summary_df = summary_df.drop_duplicates(subset=['value'], keep='last')
 
         # Create error table

@@ -9,7 +9,7 @@ class TestMarkerManagerInitialisation(unittest.TestCase):
     
     """
 
-    device_type = "FAKE DEVICE"
+    device_type = marker_management.FAKE_DEVICE
         
     def test_unsupported_device(self):
         """
@@ -69,7 +69,7 @@ class TestSetValue(unittest.TestCase):
     
     """
 
-    device_type = "FAKE DEVICE"
+    device_type = marker_management.FAKE_DEVICE
 
     def test_marker_value_whole_number(self):
         """
@@ -129,7 +129,7 @@ class TestSetBits(unittest.TestCase):
     
     """
 
-    device_type = "FAKE DEVICE"
+    device_type = marker_management.FAKE_DEVICE
 
     def test_bits_correct_length_and_type(self):
         """
@@ -166,7 +166,7 @@ class TestSetBit(unittest.TestCase):
     
     """
 
-    device_type = "FAKE DEVICE"
+    device_type = marker_management.FAKE_DEVICE
 
     def test_bit_index(self):
         device = marker_management.MarkerManager(TestSetBit.device_type)
@@ -190,19 +190,81 @@ class TestGenMarkerTable(unittest.TestCase):
     
     """
 
-    device_type = "FAKE DEVICE"
+    device_type = marker_management.FAKE_DEVICE
 
-    def test_logging(self):
+    def test_logging_marker_table_one(self):
         device = marker_management.MarkerManager(TestGenMarkerTable.device_type, crash_on_marker_errors = True)
+
         device.set_value(100)
         time.sleep(1)
         device.set_value(0)
         marker_df, _, _ = device.gen_marker_table()
+
         self.assertEqual(len(marker_df), 1)
         self.assertEqual(marker_df.at[0, 'value'], 100)
         self.assertEqual(marker_df.at[0, 'occurrence'], 1)
+        self.assertGreaterEqual(marker_df.at[0, 'duration_ms'], 999.9)
 
+    def test_logging_marker_table_more(self):
+        device = marker_management.MarkerManager(TestGenMarkerTable.device_type, crash_on_marker_errors = True)
 
+        device.set_value(100)
+        time.sleep(1)
+        device.set_value(0)
+        time.sleep(1)
+        device.set_value(222)
+        time.sleep(2)
+        device.set_value(100)
+        marker_df, _, _ = device.gen_marker_table()
+        
+        self.assertEqual(len(marker_df), 3)
+        self.assertEqual(marker_df.at[2, 'duration_ms'], float('inf'))
+        self.assertEqual(marker_df.at[2, 'end_time_s'], float('inf'))
+        self.assertEqual(marker_df.at[2, 'occurrence'], 2)
+
+    def test_summary_table(self):
+        device = marker_management.MarkerManager(TestGenMarkerTable.device_type, crash_on_marker_errors = True)
+
+        device.set_value(100)
+        time.sleep(1)
+        device.set_value(0)
+        time.sleep(1)
+        device.set_value(222)
+        time.sleep(2)
+        device.set_value(100)
+        _, summary_df, _ = device.gen_marker_table()
+
+        self.assertEqual(len(summary_df), 2)
+        self.assertEqual(summary_df.at[1, 'value'], 222)
+        self.assertEqual(summary_df.at[1, 'occurrence'], 1)
+        self.assertEqual(summary_df.at[2, 'value'], 100)
+        self.assertEqual(summary_df.at[2, 'occurrence'], 2)
+
+    def test_error_table_empty(self):
+        device = marker_management.MarkerManager(TestGenMarkerTable.device_type, crash_on_marker_errors = False)
+
+        device.set_value(100)
+        time.sleep(1)
+        device.set_value(0)
+        _, _, error_df = device.gen_marker_table()
+
+        self.assertEqual(len(error_df), 0)
+
+    def test_error_table_filled(self):
+        device = marker_management.MarkerManager(TestGenMarkerTable.device_type, crash_on_marker_errors = False)
+
+        device.set_value(100)
+        device.set_value(0)
+        device.set_value(200)
+        time.sleep(1)
+        device.set_value(200)
+        _, _, error_df = device.gen_marker_table()
+
+        self.assertEqual(len(error_df), 3)
+        self.assertEqual(error_df.error[0], "Marker with value 0 was sent within 10 ms after previous marker with value 100")
+        self.assertEqual(error_df.error[1], "Marker with value 200 was sent within 10 ms after previous marker with value 0")
+        self.assertEqual(error_df.error[2], "Marker with value 200 is sent twice in a row.")
+        
 
 if __name__ == '__main__':
     unittest.main()
