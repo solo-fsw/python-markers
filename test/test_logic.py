@@ -30,7 +30,6 @@ class TestMarkerManagerInitialisation(unittest.TestCase):
         Tests if the correct error is raised when the device_adress parameter has an incorrect datatype (anything but string).
 
         """
-        # TODO: MarkerManagerError not raised?
         # Specify device information
         for adress in [112, 0.5]:  # Add list, tuple, range?
             # Catch the error
@@ -264,17 +263,6 @@ class TestGenMarkerTable(unittest.TestCase):
         self.assertEqual(error_df.error[0], "Marker with value 0 was sent within 10 ms after previous marker with value 100")
         self.assertEqual(error_df.error[1], "Marker with value 200 was sent within 10 ms after previous marker with value 0")
         self.assertEqual(error_df.error[2], "Marker with value 200 is sent twice in a row.")
-
-class TestFindDevice(unittest.TestCase):
-
-    def test_find_device_unsupported_device(self):
-        # Catch the error
-        with self.assertRaises(marker_management.FindDeviceError) as e:
-            # Create unsupported device
-            answer = marker_management.find_device(device_type = "NONEXISTANT")
-        # Check if the correct error was raised
-        self.assertEqual(str(e.exception.id), "UnsupportedDevice")
-        
 
 if __name__ == '__main__':
     unittest.main()
