@@ -1,15 +1,7 @@
 import unittest
 import time
 import marker_management
-
-class TestTestsFunctional(unittest.TestCase):
-    """
-    Temporary testclass for ensuring the tests are functional and can be found by the automatic testing github action
-    
-    """
-    
-    def test_tests(self):
-        self.assertEqual(1, 1)
+import pandas
         
 class TestMarkerManagerInitialisation(unittest.TestCase):
     """
@@ -75,8 +67,6 @@ class TestSetValue(unittest.TestCase):
     """
     Testclass for testing MarkerManager.set_value()
     
-    Warning: device needs to be coupled and correct type needs to be entered for this test!
-    
     """
 
     device_type = "FAKE DEVICE"
@@ -137,8 +127,6 @@ class TestSetBits(unittest.TestCase):
     """
     Testclass for testing MarkerManager.set_bits()
     
-    Warning: device needs to be coupled and correct type needs to be entered for this test!
-    
     """
 
     device_type = "FAKE DEVICE"
@@ -176,8 +164,6 @@ class TestSetBit(unittest.TestCase):
     """
     Testclass for testing MarkerManager.set_bit()
     
-    Warning: device needs to be coupled and correct type needs to be entered for this test!
-    
     """
 
     device_type = "FAKE DEVICE"
@@ -198,7 +184,24 @@ class TestSetBit(unittest.TestCase):
             device.set_bit(4, "zero please")
         self.assertEqual(str(e.exception.id), "BitState")
 
-# TODO: Test marker logging
+class TestGenMarkerTable(unittest.TestCase):
+    """
+    Testclass for testing MarkerManager.gen_marker_table()
+    
+    """
+
+    device_type = "FAKE DEVICE"
+
+    def test_logging(self):
+        device = marker_management.MarkerManager(TestGenMarkerTable.device_type, crash_on_marker_errors = True)
+        device.set_value(100)
+        time.sleep(1)
+        device.set_value(0)
+        marker_df, _, _ = device.gen_marker_table()
+        self.assertEqual(len(marker_df), 1)
+        self.assertEqual(marker_df.at[0, 'value'], 100)
+        self.assertEqual(marker_df.at[0, 'occurrence'], 1)
+
 
 
 if __name__ == '__main__':

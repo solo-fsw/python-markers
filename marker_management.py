@@ -375,6 +375,8 @@ class MarkerManager:
         set_value_df = pandas.DataFrame(self.set_value_list)
 
         # Assumes that the first value is always set to 0 at init.
+        # TODO: Add tests for the accuracy of marker logging.
+        # TODO: check if hard crash necessary
         assert set_value_df['value'].iloc[0] == 0
 
         # init
@@ -387,35 +389,27 @@ class MarkerManager:
         # - The marker start is defined as marker value change from zero to non-zero or from non-zero to non-zero
         # - The marker end is defined as a marker value change from non-zero to zero or from non-zero to non-zero
         for index in set_value_df.index:
-
             cur_value = set_value_df.at[index, 'value']
             cur_time = set_value_df.at[index, 'time_ms']
-
             # Value changes
             if cur_value != last_value:
-                
-                # TODO: Add tests for the accuracy of marker logging.
-                
                 # Value changed to 0 and it is not the first value
                 if cur_value == 0 and last_value is not None:
-
                     # end marker
                     marker_df.at[marker_counter, 'end_time_ms'] = cur_time
-                    marker_counter = marker_counter + 1
+                    marker_counter += 1
 
                 # Value changed from 0 to non-zero
                 elif cur_value != 0 and last_value == 0:
-
                     # start marker:
                     marker_df.at[marker_counter, 'value'] = cur_value
                     marker_df.at[marker_counter, 'start_time_ms'] = cur_time
 
                 # Value changed from non-zero to non-zero
                 elif cur_value != 0 and last_value != 0:
-
                     # end marker:
                     marker_df.at[marker_counter, 'end_time_ms'] = cur_time
-                    marker_counter = marker_counter + 1
+                    marker_counter += 1
 
                     # start marker:
                     marker_df.at[marker_counter, 'value'] = cur_value
@@ -691,6 +685,7 @@ class SerialDevice(DeviceInterface):
     # TODO: Assess if the methods below need the @property spec. The fact that they don't have them may be
     # the reason why they need to be evald as functions instead of properties.
     
+    # @property
     def device_address(self):
         """Returns device address."""
         return self._device_address
