@@ -1,6 +1,7 @@
 import unittest
 import time
 import marker_management
+from unittest.mock import MagicMock, Mock, patch
 
 class TestDeviceCoupeling(unittest.TestCase):
     """
@@ -12,16 +13,17 @@ class TestDeviceCoupeling(unittest.TestCase):
         Tests if the correct error is raised when the same device (identical type and adress) is added twice.
 
         """
-        # TODO: MarkerManagerError not raised?
-        # TODO: Device can not be fake!
+
         device_type = "UsbParMarker"
-        # Create first class
-        device1 = marker_management.MarkerManager(device_type)
-        # Catch the error
+        mock_instance_class = MagicMock()
+        mock_instance_class.device_properties.return_value = {"Device": device_type}
+        mock_instance_class.device_address.return_value = "123"
         with self.assertRaises(marker_management.MarkerManagerError) as e:
-            # Create duplicate class
-            device2 = marker_management.MarkerManager(device_type)
-        # Check if the correct error was raised
+            with patch("marker_management.UsbParMarker", return_value=mock_instance_class) as mock_instance:
+                device1 = marker_management.MarkerManager(device_type, device_address="123")
+                # Create duplicate class
+                device2 = marker_management.MarkerManager(device_type, device_address="123")
+            # Check if the correct error was raised
         self.assertEqual(str(e.exception.id), "DuplicateDevice")
 
 if __name__ == '__main__':
