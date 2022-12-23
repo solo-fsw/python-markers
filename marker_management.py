@@ -43,6 +43,9 @@ import os
 import csv
 from serial.tools.list_ports import comports
 
+# Current library version
+LIB_VERSION = "0.0.1"
+
 # Address string indicating that the device is being faked/spoofed:
 FAKE_ADDRESS = 'FAKE'
 FAKE_DEVICE = 'FAKE DEVICE'
@@ -450,7 +453,6 @@ class MarkerManager:
         summary_df = summary_df.drop_duplicates(subset=['value'], keep='last')
 
         # Create error table
-        # TODO: rename column time_s to ...?
         error_df = pandas.DataFrame(self.error_list)
         if len(self.error_list) > 0:
             error_df["time_s"] = error_df["time_ms"] / 1000
@@ -540,10 +542,10 @@ class MarkerManager:
         error_df.squeeze()
 
         # Write data to tsv file
-        # TODO: add version of library to header (how do you want library version defined? In code or somewhere else?)
         with open(full_fn, 'w', newline='') as file_out:
             writer = csv.writer(file_out, delimiter='\t')
             writer.writerow(['Date: ' + date_str])
+            writer.writerow(['Library version: ' + LIB_VERSION])
             writer.writerow(['Device: ' + self.device_properties.get('Device')])
             writer.writerow(['Serialno: ' + self.device_properties.get('Serialno')])
             writer.writerow(['Version: ' + self.device_properties.get('Version')])
@@ -755,7 +757,8 @@ class SerialDevice(DeviceInterface):
             raise SerialError(err_msg, Eid)
         if not type(command) == str:
             err_msg = "Command should be a string."
-            raise SerialError(err_msg)
+            Eid = "CommandType"
+            raise SerialError(err_msg, Eid)
         else:
             # Send command
             self.serial_device.flushInput()

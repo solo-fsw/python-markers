@@ -378,6 +378,19 @@ class TestSerialDevice(unittest.TestCase):
                 device = marker_management.SerialDevice("104")
        self.assertEqual(str(e.exception.id), "SerialDeviceClosed")
 
+    def test_command_wrong_type(self):
+        with self.assertRaises(marker_management.SerialError) as e:
+           mock_serial_device = MagicMock()
+           mock_serial_device.baudrate = 4800
+           mock_serial_device.is_open = True
+           mock_serial_device.readline.return_value = 'testsetset'.encode()
+           with patch("marker_management.serial.Serial", return_value=mock_serial_device) as mock_serial:
+             with patch("marker_management.SerialDevice.get_info") as mock_get_info:
+                    mock_get_info.return_value = ["Serialno"]
+                    device = marker_management.SerialDevice("104")
+                    device.send_command(12)
+        self.assertEqual(str(e.exception.id), "CommandType")
+
 
 if __name__ == '__main__':
     unittest.main()
