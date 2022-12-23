@@ -323,6 +323,24 @@ class TestFindDevice(unittest.TestCase):
                     answer = marker_management.find_device(device_type="UsbParMarker", serial_no="")
         self.assertEqual(str(e.exception.id), "NoConnection")
 
+    def test_correct_information_mock(self):
+        with patch("marker_management.comports") as mock_comports:
+                mock_comports.return_value = [("A", "1a", "USB VID:PID=2341:1")]
+                mock_serial_class = MagicMock()
+                mock_serial_class.device_properties.return_value = {"Version": "0001", "Serialno": "1", "Device": "UsbParMarker"}
+                with patch("marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
+                    answer = marker_management.find_device(device_type="UsbParMarker", serial_no="1")
+        correct = {"device": {"Version": "0001", "Serialno": "1", "Device": "UsbParMarker"}, "com_port": "A"}
+        self.assertEqual(answer, correct)
+
+    def test_correct_information_fake(self):
+        answer = marker_management.find_device(device_type="", fallback_to_fake=True)
+        correct = {"device": {"Version": "0000000", "Serialno": "0000000", "Device": marker_management.FAKE_DEVICE}, "com_port": marker_management.FAKE_ADDRESS}
+        self.assertEqual(answer, correct)
+
+# info[device] = current.device)properties()
+# info[com_port] = port
+
 if __name__ == '__main__':
     unittest.main()
     # TODO: Test if correct input works without errors and returns correct values!
