@@ -121,11 +121,31 @@ class TestSetValue(unittest.TestCase):
             device.set_value(100)
             device.set_value(150)
         self.assertEqual(str(e.exception.id), "ConcurrentMarkerThreshold")
-    # TODO: Test device_interface._set_value by closing the connection in the upload?
 
-    # TODO: Test if no error is returned on toggeling is_fatal!
+    def test_is_fatal(self):
+        """
+        Tests if the nonfatal errors are supressed if crash_on_marker_errors = False
 
-    # TODO: Test correct appending to set_value_list
+        """
+        device = marker_management.MarkerManager(TestSetValue.device_type, crash_on_marker_errors=False)
+        # Concurrent marker threshold
+        device.set_value(100)
+        device.set_value(150)
+        time.sleep(1)
+        # Value sent twice
+        device.set_value(100)
+        time.sleep(2)
+        device.set_value(100)
+
+    def test_set_value_list(self):
+        device = marker_management.MarkerManager(TestSetValue.device_type, crash_on_marker_errors=False)
+        device.set_value(100)
+        device.set_value(150)
+        device.set_value(100)
+        device.set_value(200)
+        answer = [device.set_value_list[x]["value"] for x in range(len(list(device.set_value_list)))]
+        correct = [0, 100, 150, 100, 200]
+        self.assertEqual(answer, correct)
 
 class TestSetBits(unittest.TestCase):
     """
@@ -288,7 +308,7 @@ class TestFindDevice(unittest.TestCase):
         with self.assertRaises(marker_management.FindDeviceError) as e:
             with patch("marker_management.comports") as mock_comports:
                 mock_comports.return_value = [("A", "1a", "USB VID:PID=2341:1")]
-                answer = marker_management.find_device(device_type="UsbParMarker")  # TODO: Ensure UsbParmMarker is not connected while running this test
+                answer = marker_management.find_device(device_type="UsbParMarker")
         self.assertEqual(str(e.exception.id), "NoDeviceMatch")
 
     def test_no_serial_match(self):
@@ -298,7 +318,7 @@ class TestFindDevice(unittest.TestCase):
                 mock_serial_class = MagicMock()
                 mock_serial_class.device_properties = Mock(return_value={"Device": "UsbParMarker", "Serialno": ""})
                 with patch("marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
-                    answer = marker_management.find_device(device_type="UsbParMarker", serial_no="104")  # TODO: Ensure UsbParmMarker is not connected while running this test
+                    answer = marker_management.find_device(device_type="UsbParMarker", serial_no="104")
         self.assertEqual(str(e.exception.id), "NoSerialMatch")
 
     def test_multiple_connections(self):
@@ -309,7 +329,7 @@ class TestFindDevice(unittest.TestCase):
                 mock_serial_class = MagicMock()
                 mock_serial_class.device_properties.side_effect = [{"Device": "UsbParMarker", "Serialno": "1"}, {"Device": "UsbParMarker", "Serialno": "2"}]
                 with patch("marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
-                    answer = marker_management.find_device(device_type="UsbParMarker", serial_no="")  # TODO: Ensure UsbParmMarker is not connected while running this test
+                    answer = marker_management.find_device(device_type="UsbParMarker", serial_no="")
         self.assertEqual(str(e.exception.id), "MultipleConnections")
 
     def test_connection_error(self):

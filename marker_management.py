@@ -667,7 +667,6 @@ class SerialDevice(DeviceInterface):
             # Example: {"Version":"HW1:SW1.2","Serialno":"S01234","Device":"UsbParMar"}
             properties = self.get_info()
 
-             # TODO: add tests
             if properties == "":
                 err_msg = "Serial device did not respond."
                 Eid = "NoResponse"
