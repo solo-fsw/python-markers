@@ -117,26 +117,13 @@ class MarkerManager:
 
         try:
 
-            # Check if class with same type and address (except fake) already exists
-            if len(MarkerManager.marker_manager_instances) > 0 and device_address != FAKE_ADDRESS:
-
-                for instance in MarkerManager.marker_manager_instances:
-
-                    instance_properties = instance.device_interface.device_properties()
-                    instance_address = instance.device_interface.device_address()
-
-                    if instance_address == device_address and instance_properties['Device'] == device_type:
-                        err_msg = "class of same type and with same address already exists"
-                        Eid = "DuplicateDevice"
-                        raise MarkerManagerError(err_msg, Eid)
-
             if device_type not in available_devices:
                 err_msg = f"device_type can only be {available_devices}, got: {device_type}"
                 Eid = "UnsupportedDevice"
                 raise MarkerManagerError(err_msg, Eid)
 
             if not isinstance(device_address, str):
-                err_msg = f"device_address should be str, got {type(device_address)}"
+                err_msg = f"device_address should be str, got a different type instead"
                 Eid = "DeviceAdressString"
                 raise MarkerManagerError(err_msg, Eid)
 
@@ -149,6 +136,19 @@ class MarkerManager:
                 err_msg = "time_function_ms should be function"
                 Eid = "TimeFunctionMsCallable"
                 raise MarkerManagerError(err_msg, Eid)
+
+            # Check if class with same type and address (except fake) already exists
+            if len(MarkerManager.marker_manager_instances) > 0 and device_address != FAKE_ADDRESS:
+
+                for instance in MarkerManager.marker_manager_instances:
+
+                    instance_properties = instance.device_interface.device_properties()
+                    instance_address = instance.device_interface.device_address()
+
+                    if instance_address == device_address and instance_properties['Device'] == device_type:
+                        err_msg = "class of same type and with same address already exists"
+                        Eid = "DuplicateDevice"
+                        raise MarkerManagerError(err_msg, Eid)
 
         except MarkerManagerError as e:
             raise e

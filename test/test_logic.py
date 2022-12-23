@@ -36,7 +36,7 @@ class TestMarkerManagerInitialisation(unittest.TestCase):
 
         """
         # Specify device information
-        for adress in [112, 0.5]:  # Add list, tuple, range?
+        for adress in [112]:
             # Catch the error
             with self.assertRaises(marker_management.MarkerManagerError) as e:
                 # Create class with incorrect adress type
