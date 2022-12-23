@@ -2,7 +2,10 @@ import unittest
 import time
 import marker_management
 import pandas
-from unittest.mock import patch
+from unittest.mock import patch, Mock, MagicMock
+
+def mock_responses(responses, default_response=None):
+  return lambda x=None: responses[x] if x in responses else default_response
 
         
 class TestMarkerManagerInitialisation(unittest.TestCase):
@@ -292,21 +295,21 @@ class TestFindDevice(unittest.TestCase):
         with self.assertRaises(marker_management.FindDeviceError) as e:
             with patch("marker_management.comports") as mock_comports:
                 mock_comports.return_value = [("A", "1a", "USB VID:PID=2341:1")]
-                with patch("marker_management.SerialDevice") as mock_serial:
-                    mock_serial.return_value = {"Device": "UsbParMarker", "Serialno": ""}
-                    answer = marker_management.find_device(device_type="UsbParMarker")  # TODO: Ensure UsbParmMarker is not connected while running this test
-                    mock_serial.assert_called()
-                    # TODO: Doesnt return into info["device"] --> first found error ==> deviceError
+                mock_serial_class = MagicMock()
+                mock_serial_class.device_properties = Mock(return_value={"Device": "UsbParMarker", "Serialno": ""})
+                with patch("marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
+                    answer = marker_management.find_device(device_type="UsbParMarker", serial_no="104")  # TODO: Ensure UsbParmMarker is not connected while running this test
         self.assertEqual(str(e.exception.id), "NoSerialMatch")
 
     def test_multiple_connections(self):
+        # TODO: Never raises an error? Never even reaches if connected?
         with self.assertRaises(marker_management.FindDeviceError) as e:
             with patch("marker_management.comports") as mock_comports:
                 mock_comports.return_value = [("A", "1a", "USB VID:PID=2341:1"), ("B", "2b", "USB VID:PID=2341:2")]
-                with patch("marker_management.SerialDevice") as mock_serial:
-                    mock_serial.side_effect = [{"Device": "UsbParMarker", "Serialno": "1"}, {"Device": "UsbParMarker", "Serialno": "2"}]
-                    answer = marker_management.find_device(device_type="UsbParMarker")  # TODO: Ensure UsbParmMarker is not connected while running this test
-                    # TODO: Doesnt return into info["device"] --> first found error ==> deviceError
+                mock_serial_class = MagicMock()
+                mock_serial_class.device_properties.side_effect = [{"Device": "UsbParMarker", "Serialno": "1"}, {"Device": "UsbParMarker", "Serialno": "2"}]
+                with patch("marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
+                    answer = marker_management.find_device(device_type="UsbParMarker", serial_no="")  # TODO: Ensure UsbParmMarker is not connected while running this test
         self.assertEqual(str(e.exception.id), "MultipleConnections")
 
 if __name__ == '__main__':

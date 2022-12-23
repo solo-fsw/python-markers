@@ -674,6 +674,7 @@ class SerialDevice(DeviceInterface):
             if properties == "":
                 err_msg = "Serial device did not respond."
                 raise SerialError(err_msg)
+                # TODO: add tests
             if "Serialno" not in properties:
                 err_msg = "Serialno missing."
                 raise SerialError(err_msg)
@@ -963,13 +964,9 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
         com_dev_desc_matches = re.match(com_filters['com_dev_desc_regex'], desc) is not None
         com_dev_hwid_matches = re.match(com_filters['com_dev_hwid_regex'], hwid) is not None
 
-        if not (port_matches_request
-                and com_dev_desc_matches
-                and com_dev_hwid_matches):
-            continue
-
-        # save ports in list
-        port_list.append(port)
+        if port_matches_request and com_dev_desc_matches and com_dev_hwid_matches:
+            # save ports in list
+            port_list.append(port)
 
     if len(port_list) != 0:
 
@@ -988,7 +985,8 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
                 try:
                     cur_device._close()
                 except:
-                    pass
+                    # pass
+                    continue
                 connection_error = True
                 connection_error_port = port
                 connection_error_info = sys.exc_info()[1]
@@ -1004,7 +1002,7 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
                 device_hit = True
             if serial_matches_request:
                 serial_hit = True
-            if connected:
+            if True:
                 multiple_hit = True
 
             info["com_port"] = port
