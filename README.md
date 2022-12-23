@@ -25,7 +25,7 @@ At the FSW, markers are typically sent in an 8-bit format using a parallel port.
 
 
 ## Using Submodules ##
-> *The background information provided here is a summary of the information provided by github. For more information on git submodules, follow the link to the git documentation provided under __References__.*
+> *The information provided here is a summary of the information provided by github. For more information on git submodules, follow the link to the git documentation provided under __References__.*
 
 It is strongly recommended to add this repository as a git submodule to your project. This can be done as follows:
 1. Adding the submodule
@@ -33,7 +33,7 @@ It is strongly recommended to add this repository as a git submodule to your pro
 ```
 git submodule add <https://github.com/solo-fsw/python-markers.git> marker_management
 ``` 
-2. Update the submodule
+1. Update the submodule
     - After adding the submodule to your repository, update it to the latest commit using:
 ```
 git submodule update
