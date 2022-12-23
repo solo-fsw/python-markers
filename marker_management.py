@@ -112,8 +112,6 @@ class MarkerManager:
             MarkerManagerError: error when something goes wrong in the MarkerManager
         """
 
-        # MarkerManager checks
-        # TODO: device_type == None?
         try:
 
             # Check if class with same type and address (except fake) already exists
@@ -228,9 +226,6 @@ class MarkerManager:
 
         # Get current time:
         cur_time = self._time_function_ms()
-        # TODO: Incorrect inputs currently crash the program
-        #   Example: type(value) == str
-        #   Example: value == None
 
         # Check and send marker:
         try:
@@ -375,7 +370,6 @@ class MarkerManager:
         set_value_df = pandas.DataFrame(self.set_value_list)
 
         # Assumes that the first value is always set to 0 at init.
-        # TODO: check if hard crash necessary
         assert set_value_df['value'].iloc[0] == 0
 
         # init
@@ -671,13 +665,16 @@ class SerialDevice(DeviceInterface):
             # Example: {"Version":"HW1:SW1.2","Serialno":"S01234","Device":"UsbParMar"}
             properties = self.get_info()
 
+             # TODO: add tests
             if properties == "":
                 err_msg = "Serial device did not respond."
-                raise SerialError(err_msg)
-                # TODO: add tests
+                Eid = "NoResponse"
+                raise SerialError(err_msg, Eid)
+
             if "Serialno" not in properties:
                 err_msg = "Serialno missing."
-                raise SerialError(err_msg)
+                Eid = "NoSerialNo"
+                raise SerialError(err_msg, Eid)
 
             # Close device
             self.serial_device.close()
@@ -740,7 +737,8 @@ class SerialDevice(DeviceInterface):
                 self.serial_device = serial.Serial(self._device_address, **params)
             except:
                 err_msg = "Could not open serial device"
-                raise SerialError(err_msg)
+                Eid = "NoSerialDeviceMade"
+                raise SerialError(err_msg, Eid)
 
     def send_command(self, command):
         """Sends command to serial device."""
@@ -749,10 +747,12 @@ class SerialDevice(DeviceInterface):
 
         if not self.serial_device.baudrate == 4800:
             err_msg = "Serial device not in command mode."
-            raise SerialError(err_msg)
+            Eid = "BaudrateNotCommandmode"
+            raise SerialError(err_msg, Eid)
         if not self.serial_device.is_open:
             err_msg = "Serial device not open."
-            raise SerialError(err_msg)
+            Eid = "SerialDeviceClosed"
+            raise SerialError(err_msg, Eid)
         if not type(command) == str:
             err_msg = "Command should be a string."
             raise SerialError(err_msg)
@@ -1028,8 +1028,7 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
             Eid = "NoSerialMatch"
             raise FindDeviceError(err_msg, Eid)
 
-        # TODO: add tests
-        if multiple_hit:
+        if multiple_hit:  # TODO: fix test
             err_msg = "Multiple matching devices found."
             Eid = "MultipleConnections"
             FindDeviceError(err_msg, Eid)

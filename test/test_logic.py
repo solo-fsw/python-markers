@@ -338,8 +338,46 @@ class TestFindDevice(unittest.TestCase):
         correct = {"device": {"Version": "0000000", "Serialno": "0000000", "Device": marker_management.FAKE_DEVICE}, "com_port": marker_management.FAKE_ADDRESS}
         self.assertEqual(answer, correct)
 
-# info[device] = current.device)properties()
-# info[com_port] = port
+class TestSerialDevice(unittest.TestCase):
+
+    def test_empty_properties(self):
+        with self.assertRaises(marker_management.SerialError) as e:
+            with patch("marker_management.SerialDevice.command_mode") as mock_command_mode:
+                with patch("marker_management.SerialDevice.get_info") as mock_get_info:
+                    mock_get_info.return_value = ""
+                    device = marker_management.SerialDevice("104")
+        self.assertEqual(str(e.exception.id), "NoResponse")
+
+    def test_serialno_missing(self):
+        with self.assertRaises(marker_management.SerialError) as e:
+            with patch("marker_management.SerialDevice.command_mode") as mock_command_mode:
+                with patch("marker_management.SerialDevice.get_info") as mock_get_info:
+                    mock_get_info.return_value = "not the correct format"
+                    device = marker_management.SerialDevice("104")
+        self.assertEqual(str(e.exception.id), "NoSerialNo")
+
+    def test_open_serial_device(self):
+        with self.assertRaises(marker_management.SerialError) as e:
+            device = marker_management.SerialDevice("104")
+        self.assertEqual(str(e.exception.id), "NoSerialDeviceMade")
+
+    def test_wrong_baudrate(self):
+        with self.assertRaises(marker_management.SerialError) as e:
+            mock_serial_device = MagicMock()
+            mock_serial_device.baudrate = 20
+            with patch("marker_management.serial.Serial", return_value=mock_serial_device) as mock_serial:
+                device = marker_management.SerialDevice("104")
+        self.assertEqual(str(e.exception.id), "BaudrateNotCommandmode")
+
+    def test_serial_device_closed(self):
+       with self.assertRaises(marker_management.SerialError) as e:
+           mock_serial_device = MagicMock()
+           mock_serial_device.baudrate = 4800
+           mock_serial_device.is_open = False
+           with patch("marker_management.serial.Serial", return_value=mock_serial_device) as mock_serial:
+                device = marker_management.SerialDevice("104")
+       self.assertEqual(str(e.exception.id), "SerialDeviceClosed")
+
 
 if __name__ == '__main__':
     unittest.main()
