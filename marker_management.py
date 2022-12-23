@@ -980,8 +980,7 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
             try:
                 # Create general serial device to obtain device info
                 cur_device = SerialDevice(port)
-                cur_device._close()               
-
+                cur_device._close()
             except:
                 try:
                     cur_device._close()
