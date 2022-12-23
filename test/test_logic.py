@@ -52,7 +52,7 @@ class TestMarkerManagerInitialisation(unittest.TestCase):
             # Catch the error
             with self.assertRaises(marker_management.MarkerManagerError) as e:
                 # Create class with incorrect crash_on_marker_errors type
-                device = marker_management.MarkerManager(TestMarkerManagerInitialisation.device_type, crash_on_marker_errors = crash)
+                device = marker_management.MarkerManager(TestMarkerManagerInitialisation.device_type, crash_on_marker_errors = "crash")
             self.assertEqual(str(e.exception.id), "CrashOnMarkerErrorsBoolean")
             
     def test_time_function_type(self):
@@ -66,6 +66,10 @@ class TestMarkerManagerInitialisation(unittest.TestCase):
                 # Create class with incorrect time_function_ms
                 device1 = marker_management.MarkerManager(TestMarkerManagerInitialisation.device_type, time_function_ms = timeing)
             self.assertEqual(str(e.exception.id), "TimeFunctionMsCallable")
+
+    def test_correct_marker_manager(self):
+        device = marker_management.MarkerManager(TestMarkerManagerInitialisation.device_type)
+        self.assertIsInstance(device, marker_management.MarkerManager)
 
 class TestSetValue(unittest.TestCase):
     """
@@ -147,6 +151,12 @@ class TestSetValue(unittest.TestCase):
         correct = [0, 100, 150, 100, 200]
         self.assertEqual(answer, correct)
 
+    def test_set_value_correct(self):
+        device = marker_management.MarkerManager(TestSetValue.device_type)
+        device.set_value(100)
+        time.sleep(1)
+        device.set_value(0)
+
 class TestSetBits(unittest.TestCase):
     """
     Testclass for testing MarkerManager.set_bits()
@@ -184,6 +194,14 @@ class TestSetBits(unittest.TestCase):
             device.set_bits("10123010")
         self.assertEqual(str(e.exception.id), "BitElements")
 
+    def test_set_bits_correct(self):
+        device = marker_management.MarkerManager(TestSetBits.device_type, crash_on_marker_errors=True)
+        with self.assertRaises(marker_management.MarkerError) as e:
+            device.set_bits('00000001')
+            time.sleep(1)
+            device.set_value(1)
+        self.assertEqual(str(e.exception.id), "MarkerSentTwice")
+
 class TestSetBit(unittest.TestCase):
     """
     Testclass for testing MarkerManager.set_bit()
@@ -207,6 +225,14 @@ class TestSetBit(unittest.TestCase):
         with self.assertRaises(marker_management.MarkerError) as e:
             device.set_bit(4, "zero please")
         self.assertEqual(str(e.exception.id), "BitState")
+
+    def test_set_bit_correct(self):
+        device = marker_management.MarkerManager(TestSetBit.device_type, crash_on_marker_errors=True)
+        with self.assertRaises(marker_management.MarkerError) as e:
+            device.set_bit(7, 'on')
+            time.sleep(1)
+            device.set_value(1)
+        self.assertEqual(str(e.exception.id), "MarkerSentTwice")
 
 class TestGenMarkerTable(unittest.TestCase):
     """
@@ -322,7 +348,6 @@ class TestFindDevice(unittest.TestCase):
         self.assertEqual(str(e.exception.id), "NoSerialMatch")
 
     def test_multiple_connections(self):
-        # TODO: Never raises an error? Never even reaches if connected?
         with self.assertRaises(marker_management.FindDeviceError) as e:
             with patch("marker_management.comports") as mock_comports:
                 mock_comports.return_value = [("A", "1a", "USB VID:PID=2341:1"), ("B", "2b", "USB VID:PID=2341:2")]
@@ -412,7 +437,16 @@ class TestSerialDevice(unittest.TestCase):
                     device.send_command(12)
         self.assertEqual(str(e.exception.id), "CommandType")
 
+    def test_correct_serial_device(self):
+        mock_serial_device = MagicMock()
+        mock_serial_device.baudrate = 4800
+        mock_serial_device.is_open = True
+        mock_serial_device.readline.return_value = 'testsetset'.encode()
+        with patch("marker_management.serial.Serial", return_value=mock_serial_device) as mock_serial:
+            with patch("marker_management.SerialDevice.get_info") as mock_get_info:
+                mock_get_info.return_value = ["Serialno"]
+                device = marker_management.SerialDevice("104")
+
 
 if __name__ == '__main__':
     unittest.main()
-    # TODO: Test if correct input works without errors and returns correct values!
