@@ -9,7 +9,7 @@ Markers (which are managed by this python module) signal the occurrence of these
 
 Markers are sent by stimulus presentation software such as OpenSesame or E-Prime, from the stimulus pc, via a marker cable (LPT, UsbParMarker, EVA) to the physiology hardware (e.g. Biopac or BioSemi). Markers are recorded as a continuous signal and this signal typically looks as follows:
 
-[Example of a marker signal over time](marker_signal_example.png "Markdown graph example")
+![Example of a marker signal over time](marker_signal_example.png "Markdown graph example")
 
 These markers have the following properties:
 - **A value (positive non-zero integer):** This is the value or height of the marker.
