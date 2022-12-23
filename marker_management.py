@@ -745,6 +745,8 @@ class SerialDevice(DeviceInterface):
         """Sends command to serial device."""
 
         assert not self.is_fake
+        self.command_mode()
+        timing.delay(100)
 
         if not self.serial_device.baudrate == 4800:
             err_msg = "Serial device not in command mode."
@@ -776,10 +778,9 @@ class SerialDevice(DeviceInterface):
                 pass
             else:
                 decoded_data = json.loads(decoded_data)
-                
-            # TODO: Implement in send_command: Connect in command mode, send 
-            # command, parse response, reconnect in data mode. When fake, spoof 
-            # the respone. Check in the repo how EVA and UsbParMarker behave.
+
+            self.data_mode()
+            timing.delay(100)
 
             return decoded_data
 

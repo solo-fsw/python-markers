@@ -415,4 +415,3 @@ class TestSerialDevice(unittest.TestCase):
 if __name__ == '__main__':
     unittest.main()
     # TODO: Test if correct input works without errors and returns correct values!
-    # TODO: Test general errors
