@@ -964,9 +964,11 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
         com_dev_desc_matches = re.match(com_filters['com_dev_desc_regex'], desc) is not None
         com_dev_hwid_matches = re.match(com_filters['com_dev_hwid_regex'], hwid) is not None
 
-        if port_matches_request and com_dev_desc_matches and com_dev_hwid_matches:
-            # save ports in list
-            port_list.append(port)
+        if not (port_matches_request and com_dev_desc_matches and com_dev_hwid_matches):
+            continue
+            
+        # save ports in list
+        port_list.append(port)
 
     if len(port_list) != 0:
 
@@ -985,8 +987,7 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
                 try:
                     cur_device._close()
                 except:
-                    # pass
-                    continue
+                    pass
                 connection_error = True
                 connection_error_port = port
                 connection_error_info = sys.exc_info()[1]
@@ -1002,7 +1003,7 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
                 device_hit = True
             if serial_matches_request:
                 serial_hit = True
-            if True:
+            if connected:
                 multiple_hit = True
 
             info["com_port"] = port
@@ -1035,7 +1036,8 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
 
         if connection_error:
             err_msg = f'Could not connect to "{connection_error_port}" because: {connection_error_info}'
-            raise FindDeviceError(err_msg)
+            Eid = "NoConnection"
+            raise FindDeviceError(err_msg, Eid)
 
     except FindDeviceError as e:
         if fallback_to_fake:
