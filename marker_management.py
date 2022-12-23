@@ -827,10 +827,6 @@ class SerialDevice(DeviceInterface):
 
 class UsbParMarker(SerialDevice):
     """Class for the UsbParMarker."""
-
-
-
-    # TODO: OVerride send_command, add specific behaviour, call superclass send_command.
     
     def leds_on(self):
         """Turns led lights on"""
@@ -1031,10 +1027,10 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
             Eid = "NoSerialMatch"
             raise FindDeviceError(err_msg, Eid)
 
-        if multiple_hit:  # TODO: fix test
+        if multiple_hit:
             err_msg = "Multiple matching devices found."
             Eid = "MultipleConnections"
-            FindDeviceError(err_msg, Eid)
+            raise FindDeviceError(err_msg, Eid)
 
         if connection_error:
             err_msg = f'Could not connect to "{connection_error_port}" because: {connection_error_info}'
