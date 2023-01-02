@@ -45,6 +45,8 @@ Using this repository as a git submodule has the following advantages:
 - Using the submodule allows you to keep your repository light, only including the submodule reference instead of the whole repository
 
 ## Examples ##
+> *The python example provided below is also available as a python file in the repository (example.py). In the example extra comments were added for additional clarity.*
+> 
 An example of using the library in python is shown below.
 ```python
 import marker_management as mark
