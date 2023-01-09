@@ -4,6 +4,9 @@ import marker_management
 import pandas
 from unittest.mock import patch, Mock, MagicMock
 
+# TODO: Replace adres with address and nonexistant with nonexistent.
+
+
 def mock_responses(responses, default_response=None):
   return lambda x=None: responses[x] if x in responses else default_response
 
@@ -66,7 +69,10 @@ class TestMarkerManagerInitialisation(unittest.TestCase):
         """
         Tests if the correct error is raised when the crash_on_marker_errors parameter has an incorrect datatype (anything but boolean).
 
-        """
+        """ 
+        
+        # TODO: use crash var below?
+        
         for crash in ["Nope", 0, 1.0]:
             # Catch the error
             with self.assertRaises(marker_management.MarkerManagerError) as e:
@@ -95,7 +101,12 @@ class TestSetValue(unittest.TestCase):
     Testclass for testing MarkerManager.set_value()
     
     """
-
+    
+    # TODO: Also add the cases where the errors is not thrown; e.g., check that the  whole number
+    # error is not thrown when set_value is called with a whole number.
+    
+    
+    
     device_type = marker_management.FAKE_DEVICE
 
     def test_marker_value_whole_number(self):

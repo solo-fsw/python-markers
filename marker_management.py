@@ -20,6 +20,8 @@ Notes:
 
 """
 
+# TODO: Removed completed items below. The LUXURY item can also be removed. 
+
 # Todo:
 # - Check if libraries exist in OS installation (non-megapack), if not replace them with included libraries or
 #   native libraries. https://osdoc.cogsci.nl/3.3/notes/3312/
@@ -540,7 +542,9 @@ class MarkerManager:
         summary_df.squeeze()
         marker_df.squeeze()
         error_df.squeeze()
-
+        
+        # TODO: Add 'Device ' before 'Version' and 'Serialno' info below'
+        
         # Write data to tsv file
         with open(full_fn, 'w', newline='') as file_out:
             writer = csv.writer(file_out, delimiter='\t')
@@ -659,7 +663,11 @@ class SerialDevice(DeviceInterface):
         self._device_address = device_address
 
         if not device_address == FAKE_ADDRESS:
-
+            
+            # TODO: Assess if the self.command_mode() call below is necessary--it is also called
+            # by send_command(), which is called by the get_info() below. In essence, probably only
+            # send_command() should ever call self.command_mode().
+            
             # Open device in command mode:
             self.command_mode()
             timing.delay(100)
@@ -743,7 +751,9 @@ class SerialDevice(DeviceInterface):
 
     def send_command(self, command):
         """Sends command to serial device."""
-
+        
+        # TODO: Throw error on calling send_command when fake at assert below.
+        
         assert not self.is_fake
         self.command_mode()
         timing.delay(100)
@@ -827,6 +837,9 @@ class SerialDevice(DeviceInterface):
 
 class UsbParMarker(SerialDevice):
     """Class for the UsbParMarker."""
+    
+    # TODO: do not return a warning string when the feature is not supported. Instead,
+    # Return what would be returned if the LEDs were off.
     
     def leds_on(self):
         """Turns led lights on"""
