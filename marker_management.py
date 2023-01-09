@@ -31,6 +31,7 @@ import sys
 import os
 import csv
 from serial.tools.list_ports import comports
+import warnings
 
 # Current library version
 LIB_VERSION = "0.0.1"
@@ -649,12 +650,8 @@ class SerialDevice(DeviceInterface):
 
         if not device_address == FAKE_ADDRESS:
             
-            # TODO: Assess if the self.command_mode() call below is necessary--it is also called
-            # by send_command(), which is called by the get_info() below. In essence, probably only
-            # send_command() should ever call self.command_mode().
-            
             # Open device in command mode:
-            self.command_mode()
+            self.command_mode() # Future work: removing unnecessary self.command_mode() causes errors?
             timing.delay(100)
 
             # Example: {"Version":"HW1:SW1.2","Serialno":"S01234","Device":"UsbParMar"}
@@ -736,48 +733,50 @@ class SerialDevice(DeviceInterface):
 
     def send_command(self, command):
         """Sends command to serial device."""
-        
-        # TODO: Throw error on calling send_command when fake at assert below.
-        
-        assert not self.is_fake
-        self.command_mode()
-        timing.delay(100)
 
-        if not self.serial_device.baudrate == 4800:
-            err_msg = "Serial device not in command mode."
-            Eid = "BaudrateNotCommandmode"
-            raise SerialError(err_msg, Eid)
-        if not self.serial_device.is_open:
-            err_msg = "Serial device not open."
-            Eid = "SerialDeviceClosed"
-            raise SerialError(err_msg, Eid)
-        if not type(command) == str:
-            err_msg = "Command should be a string."
-            Eid = "CommandType"
+        if self.is_fake:
+            err_msg = "Fake device is not allowed to send commands."
+            Eid = "FakeDeviceError"
             raise SerialError(err_msg, Eid)
         else:
-            # Send command
-            self.serial_device.flushInput()
-            self.serial_device.write(command.encode())
+            self.command_mode()
             timing.delay(100)
 
-            # Get reply
-            data = self.serial_device.readline()
-
-            decoded_data = data.decode('utf-8')
-
-            # If reply is json string, decode it
-            try:
-                json.loads(decoded_data)
-            except ValueError:
-                pass
+            if not self.serial_device.baudrate == 4800:
+                err_msg = "Serial device not in command mode."
+                Eid = "BaudrateNotCommandmode"
+                raise SerialError(err_msg, Eid)
+            if not self.serial_device.is_open:
+                err_msg = "Serial device not open."
+                Eid = "SerialDeviceClosed"
+                raise SerialError(err_msg, Eid)
+            if not type(command) == str:
+                err_msg = "Command should be a string."
+                Eid = "CommandType"
+                raise SerialError(err_msg, Eid)
             else:
-                decoded_data = json.loads(decoded_data)
+                # Send command
+                self.serial_device.flushInput()
+                self.serial_device.write(command.encode())
+                timing.delay(100)
 
-            self.data_mode()
-            timing.delay(100)
+                # Get reply
+                data = self.serial_device.readline()
 
-            return decoded_data
+                decoded_data = data.decode('utf-8')
+
+                # If reply is json string, decode it
+                try:
+                    json.loads(decoded_data)
+                except ValueError:
+                    pass
+                else:
+                    decoded_data = json.loads(decoded_data)
+
+                self.data_mode()
+                timing.delay(100)
+
+                return decoded_data
 
     def get_info(self):
         """Get info from serial device."""
@@ -823,14 +822,14 @@ class SerialDevice(DeviceInterface):
 class UsbParMarker(SerialDevice):
     """Class for the UsbParMarker."""
     
-    # TODO: do not return a warning string when the feature is not supported. Instead,
-    # Return what would be returned if the LEDs were off.
+    
     
     def leds_on(self):
         """Turns led lights on"""
         sw_version = self.get_sw_version()
         if float(sw_version) < 1.3:
-            leds_on_answer = 'Check firmware version, could not turn on leds'
+            warnings.warn('Check firmware version, could not turn on leds')
+            leds_on_answer = 'LedsOff'
         else:
             leds_on_answer = self.send_command('L')
         return leds_on_answer
@@ -839,7 +838,8 @@ class UsbParMarker(SerialDevice):
         """Turns led lights on"""
         sw_version = self.get_sw_version()
         if float(sw_version) < 1.3:
-            leds_off_answer = 'Check firmware version, could not turn off leds'
+            warnings.warn('Check firmware version, could not turn off leds')
+            leds_on_answer = 'LedsOff'
         else:
             leds_off_answer = self.send_command('O')
         return leds_off_answer
