@@ -4,8 +4,6 @@ import marker_management
 import pandas
 from unittest.mock import patch, Mock, MagicMock
 
-# TODO: Replace adres with address and nonexistant with nonexistent.
-
 
 def mock_responses(responses, default_response=None):
   return lambda x=None: responses[x] if x in responses else default_response
@@ -13,7 +11,7 @@ def mock_responses(responses, default_response=None):
 class TestDuplicateDevice(unittest.TestCase):
     def test_duplicate_device(self):
         """
-        Tests if the correct error is raised when the same device (identical type and adress) is added twice.
+        Tests if the correct error is raised when the same device (identical type and address) is added twice.
 
         """
 
@@ -44,7 +42,7 @@ class TestMarkerManagerInitialisation(unittest.TestCase):
         
         """
         # Specify device information
-        device_type = "NONEXISTANT"
+        device_type = "nonexistent"
         # Catch the error
         with self.assertRaises(marker_management.MarkerManagerError) as e:
             # Create unsupported device
@@ -52,32 +50,29 @@ class TestMarkerManagerInitialisation(unittest.TestCase):
         # Check if the correct error was raised
         self.assertEqual(str(e.exception.id), "UnsupportedDevice")
         
-    def test_device_adress_type(self):
+    def test_device_address_type(self):
         """
-        Tests if the correct error is raised when the device_adress parameter has an incorrect datatype (anything but string).
+        Tests if the correct error is raised when the device_address parameter has an incorrect datatype (anything but string).
 
         """
         # Specify device information
-        for adress in [112]:
+        for address in [112]:
             # Catch the error
             with self.assertRaises(marker_management.MarkerManagerError) as e:
-                # Create class with incorrect adress type
-                device = marker_management.MarkerManager(TestMarkerManagerInitialisation.device_type, adress)
-            self.assertEqual(str(e.exception.id), "DeviceAdressString")
+                # Create class with incorrect address type
+                device = marker_management.MarkerManager(TestMarkerManagerInitialisation.device_type, address)
+            self.assertEqual(str(e.exception.id), "DeviceAddressString")
 
     def test_crash_on_marker_errors_type(self):
         """
         Tests if the correct error is raised when the crash_on_marker_errors parameter has an incorrect datatype (anything but boolean).
 
-        """ 
-        
-        # TODO: use crash var below?
-        
-        for crash in ["Nope", 0, 1.0]:
+        """         
+        for crash_var in ["Nope", 0, 1.0]:
             # Catch the error
             with self.assertRaises(marker_management.MarkerManagerError) as e:
                 # Create class with incorrect crash_on_marker_errors type
-                device = marker_management.MarkerManager(TestMarkerManagerInitialisation.device_type, crash_on_marker_errors = "crash")
+                device = marker_management.MarkerManager(TestMarkerManagerInitialisation.device_type, crash_on_marker_errors = crash_var)
             self.assertEqual(str(e.exception.id), "CrashOnMarkerErrorsBoolean")
             
     def test_time_function_type(self):
@@ -351,7 +346,7 @@ class TestFindDevice(unittest.TestCase):
         # Catch the error
         with self.assertRaises(marker_management.FindDeviceError) as e:
             # Create unsupported device
-            answer = marker_management.find_device(device_type = "NONEXISTANT")
+            answer = marker_management.find_device(device_type = "NONEXISTENT")
         # Check if the correct error was raised
         self.assertEqual(str(e.exception.id), "UnsupportedDevice")
 

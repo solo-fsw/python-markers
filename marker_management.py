@@ -20,19 +20,6 @@ Notes:
 
 """
 
-# TODO: Removed completed items below. The LUXURY item can also be removed. 
-
-# Todo:
-# - Check if libraries exist in OS installation (non-megapack), if not replace them with included libraries or
-#   native libraries. https://osdoc.cogsci.nl/3.3/notes/3312/
-# - Evaluate renaming serial device descriptor in Arduino IDE.
-# - Adjust fake device: should not be general serial device
-# - LUXURY: Evaluate browser based updating of devices.
-# - Check set_bit LSB, MSB
-# - sendcommand should include everything, close if necessary, open in command, send command, close, reopen in data mode
-# - Include min/max/avg/total in the summary table
-# - Include a version of this library and include the version in the header of the tsv marker table file
-
 from abc import ABC, abstractmethod
 import GS_timing as timing
 import serial
@@ -126,7 +113,7 @@ class MarkerManager:
 
             if not isinstance(device_address, str):
                 err_msg = f"device_address should be str, got a different type instead"
-                Eid = "DeviceAdressString"
+                Eid = "DeviceAddressString"
                 raise MarkerManagerError(err_msg, Eid)
 
             if not isinstance(crash_on_marker_errors, bool):
@@ -543,16 +530,14 @@ class MarkerManager:
         marker_df.squeeze()
         error_df.squeeze()
         
-        # TODO: Add 'Device ' before 'Version' and 'Serialno' info below'
-        
         # Write data to tsv file
         with open(full_fn, 'w', newline='') as file_out:
             writer = csv.writer(file_out, delimiter='\t')
             writer.writerow(['Date: ' + date_str])
             writer.writerow(['Library version: ' + LIB_VERSION])
             writer.writerow(['Device: ' + self.device_properties.get('Device')])
-            writer.writerow(['Serialno: ' + self.device_properties.get('Serialno')])
-            writer.writerow(['Version: ' + self.device_properties.get('Version')])
+            writer.writerow(['Device serialno: ' + self.device_properties.get('Serialno')])
+            writer.writerow(['Device version: ' + self.device_properties.get('Version')])
             if isinstance(more_info, dict):
                 for key, value in more_info.items():
                     writer.writerow([key + ': ' + str(value)])
