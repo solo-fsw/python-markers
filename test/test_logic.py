@@ -96,12 +96,6 @@ class TestSetValue(unittest.TestCase):
     Testclass for testing MarkerManager.set_value()
     
     """
-    
-    # TODO: Also add the cases where the errors is not thrown; e.g., check that the  whole number
-    # error is not thrown when set_value is called with a whole number.
-    
-    
-    
     device_type = marker_management.FAKE_DEVICE
 
     def test_marker_value_whole_number(self):
@@ -181,6 +175,12 @@ class TestSetValue(unittest.TestCase):
         device.set_value(100)
         time.sleep(1)
         device.set_value(0)
+        time.sleep(1)
+        for i in range(10):
+            device.set_value(35)
+            time.sleep(1)
+            device.set_value(0)
+            time.sleep(1)
 
 class TestSetBits(unittest.TestCase):
     """
