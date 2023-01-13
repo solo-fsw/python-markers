@@ -370,7 +370,7 @@ class TestFindDevice(unittest.TestCase):
                 mock_serial_class.device_properties = Mock(return_value={"Device": "UsbParMarker", "Serialno": ""})
                 with patch("marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
                     answer = marker_management.find_device(device_type="UsbParMarker", serial_no="104")
-        self.assertEqual(str(e.exception.id), "NoSerialMatch")
+        self.assertEqual(str(e.exception.id), "NoDeviceMatch")
 
     def test_multiple_connections(self):
         with self.assertRaises(marker_management.FindDeviceError) as e:
