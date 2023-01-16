@@ -413,7 +413,7 @@ class TestSerialDevice(unittest.TestCase):
 
     def test_empty_properties(self):
         with self.assertRaises(marker_management.SerialError) as e:
-            with patch("marker_management.SerialDevice.command_mode") as mock_command_mode:
+            with patch("marker_management.SerialDevice.open_serial_device") as mock_open_serial:
                 with patch("marker_management.SerialDevice.get_info") as mock_get_info:
                     mock_get_info.return_value = ""
                     device = marker_management.SerialDevice("104")
@@ -421,7 +421,7 @@ class TestSerialDevice(unittest.TestCase):
 
     def test_serialno_missing(self):
         with self.assertRaises(marker_management.SerialError) as e:
-            with patch("marker_management.SerialDevice.command_mode") as mock_command_mode:
+            with patch("marker_management.SerialDevice.open_serial_device") as mock_open_serial:
                 with patch("marker_management.SerialDevice.get_info") as mock_get_info:
                     mock_get_info.return_value = "not the correct format"
                     device = marker_management.SerialDevice("104")
