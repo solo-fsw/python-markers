@@ -367,7 +367,7 @@ class TestFindDevice(unittest.TestCase):
             with patch("marker_management.comports") as mock_comports:
                 mock_comports.return_value = [("A", "1a", "USB VID:PID=2341:1")]
                 mock_serial_class = MagicMock()
-                mock_serial_class.device_properties = Mock(return_value={"Device": "UsbParMarker", "Serialno": ""})
+                mock_serial_class.device_properties = {"Device": "UsbParMarker", "Serialno": "1"}
                 with patch("marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
                     answer = marker_management.find_device(device_type="UsbParMarker", serial_no="104")
         self.assertEqual(str(e.exception.id), "NoDeviceMatch")
@@ -377,7 +377,7 @@ class TestFindDevice(unittest.TestCase):
             with patch("marker_management.comports") as mock_comports:
                 mock_comports.return_value = [("A", "1a", "USB VID:PID=2341:1"), ("B", "2b", "USB VID:PID=2341:2")]
                 mock_serial_class = MagicMock()
-                mock_serial_class.device_properties.return_value = {"Device": "UsbParMarker", "Serialno": "1"}
+                mock_serial_class.device_properties = {"Device": "UsbParMarker", "Serialno": "1"}
                 mock_serial_class._close.return_value = None
                 with patch("marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
                     answer = marker_management.find_device(device_type="UsbParMarker", serial_no="1")
@@ -398,7 +398,7 @@ class TestFindDevice(unittest.TestCase):
         with patch("marker_management.comports") as mock_comports:
                 mock_comports.return_value = [("A", "1a", "USB VID:PID=2341:1")]
                 mock_serial_class = MagicMock()
-                mock_serial_class.device_properties.return_value = {"Version": "0001", "Serialno": "1", "Device": "UsbParMarker"}
+                mock_serial_class.device_properties = {"Version": "0001", "Serialno": "1", "Device": "UsbParMarker"}
                 with patch("marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
                     answer = marker_management.find_device(device_type="UsbParMarker", serial_no="1")
         correct = {"device": {"Version": "0001", "Serialno": "1", "Device": "UsbParMarker"}, "com_port": "A"}
