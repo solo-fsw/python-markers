@@ -389,7 +389,7 @@ class TestFindDevice(unittest.TestCase):
                 mock_comports.return_value = [("A", "1a", "USB VID:PID=2341:1"), ("A", "1a", "USB VID:PID=2341:1")]
                 mock_serial_class = MagicMock()
                 mock_serial_class._close.side_effect = ["No error first time around", Exception("This is an error"), "This is not"]
-                mock_serial_class.device_properties.side_effect = [{"Device": "UsbParMarker", "Serialno": "1"}, {"Device": "UsbParMarker", "Serialno": "2"}]
+                mock_serial_class.device_properties = {"Device": "UsbParMarker", "Serialno": "1"}
                 with patch("marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
                     answer = marker_management.find_device(device_type="UsbParMarker", serial_no="")
         self.assertEqual(str(e.exception.id), "NoConnection")
