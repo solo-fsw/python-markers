@@ -132,8 +132,8 @@ class MarkerManager:
 
                 for instance in MarkerManager.marker_manager_instances:
 
-                    instance_properties = instance.device_interface.device_properties()
-                    instance_address = instance.device_interface.device_address()
+                    instance_properties = instance.device_interface.device_properties
+                    instance_address = instance.device_interface.device_address
 
                     if instance_address == device_address and instance_properties['Device'] == device_type:
                         err_msg = "class of same type and with same address already exists"
@@ -1023,11 +1023,11 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
                 device_hit_index = device_hit.index(True)
                 info["com_port"] = connected_port_list[device_hit_index]
 
-        # Check if a connection error happened
-        if connection_error:
-            err_msg = f'Could not connect to "{connection_error_port}" because: {connection_error_info}'
-            Eid = "NoConnection"
-            raise FindDeviceError(err_msg, Eid)
+        # # Check if a connection error happened
+        # if connection_error:
+        #     err_msg = f'Could not connect to "{connection_error_port}" because: {connection_error_info}'
+        #     Eid = "NoConnection"
+        #     raise FindDeviceError(err_msg, Eid)
 
     except FindDeviceError as e:
         if fallback_to_fake:
