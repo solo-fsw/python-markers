@@ -132,8 +132,8 @@ class MarkerManager:
 
                 for instance in MarkerManager.marker_manager_instances:
 
-                    instance_properties = instance.device_interface.device_properties()
-                    instance_address = instance.device_interface.device_address()
+                    instance_properties = instance.device_interface.device_properties
+                    instance_address = instance.device_interface.device_address
 
                     if instance_address == device_address and instance_properties['Device'] == device_type:
                         err_msg = "class of same type and with same address already exists"
