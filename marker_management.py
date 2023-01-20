@@ -922,6 +922,7 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
         raise FindDeviceError(f"Only {available_devices} supported.", Eid)
 
     info = {}
+    temp_info = {}
 
     # Create filters
     device_regexp = "^.*$"
@@ -987,13 +988,15 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
                 connection_error_info = sys.exc_info()[1]
                 continue
 
-            info["device"] = cur_device.device_properties
+            temp_info["device"] = cur_device.device_properties
 
             # Check filter
-            device_matches_request = re.match(com_filters['device_regex'], info['device']['Device']) is not None
-            serial_matches_request = re.match(com_filters['sn_regex'], info['device']['Serialno']) is not None
+            device_matches_request = re.match(com_filters['device_regex'], temp_info['device']['Device']) is not None
+            serial_matches_request = re.match(com_filters['sn_regex'], temp_info['device']['Serialno']) is not None
 
+            # save info when a match was found
             if device_matches_request and serial_matches_request:
+                info["device"] = cur_device.device_properties
                 device_hit.append(True)
                 connected_port_list.append(port)
 
