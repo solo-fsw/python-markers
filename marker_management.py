@@ -1021,13 +1021,11 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
                 device_hit_index = device_hit.index(True)
                 info["com_port"] = connected_port_list[device_hit_index]
 
-        # Check if a connection error happened
+        # Check if connection error happened
         if connection_error:
-            err_msg = f'WARNING during find device: Could not connect to "{connection_error_port}" ' \
-                      f'because: {connection_error_info}. ' \
-                      f'Ignore this warning when multiple devices are used and the device connected to ' \
-                      f'"{connection_error_port}" is already initialized'
-            warnings.warn(err_msg)
+            err_msg = f'Could not connect to "{connection_error_port}" because: {connection_error_info}'
+            Eid = "NoConnection"
+            raise FindDeviceError(err_msg, Eid)
 
     except FindDeviceError as e:
         if fallback_to_fake:
