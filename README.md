@@ -96,12 +96,13 @@ marker_manager.close()
 This example shows how python code can be used to create a connection with the device, how to send markers through the device and how to subsequently create a log containing information about the sent markers.
 
 
-~ *Links to OpenSesame and psychopy examples.* ~
+For OpenSesame, the marker_manager module has been implemented in a plugin, which can be found [here](https://github.com/solo-fsw/opensesame_plugin_markers).
 
 
 ## References ##
 
 - [SOLO wiki on markers](https://researchwiki.solo.universiteitleiden.nl/xwiki/wiki/researchwiki.solo.universiteitleiden.nl/view/Hardware/Markers%20and%20Events/)
+- [OpenSesame Markers plugin](https://github.com/solo-fsw/opensesame_plugin_markers)
 - [SOLO wiki on the UsbParMarker](https://researchwiki.solo.universiteitleiden.nl/xwiki/wiki/researchwiki.solo.universiteitleiden.nl/view/Hardware/Markers%20and%20Events/UsbParMarker/)
 - [UsbParMarker github page](https://github.com/solo-fsw/UsbParMarker)
 - [SOLO wiki on Eva](https://researchwiki.solo.universiteitleiden.nl/xwiki/wiki/researchwiki.solo.universiteitleiden.nl/view/Hardware/Markers%20and%20Events/EVA/)
