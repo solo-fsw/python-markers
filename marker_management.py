@@ -21,7 +21,7 @@ Notes:
 """
 
 from abc import ABC, abstractmethod
-import GS_timing as timing
+import utils.GS_timing as timing
 import serial
 import datetime
 import json
@@ -132,8 +132,8 @@ class MarkerManager:
 
                 for instance in MarkerManager.marker_manager_instances:
 
-                    instance_properties = instance.device_interface.device_properties()
-                    instance_address = instance.device_interface.device_address()
+                    instance_properties = instance.device_interface.device_properties
+                    instance_address = instance.device_interface.device_address
 
                     if instance_address == device_address and instance_properties['Device'] == device_type:
                         err_msg = "class of same type and with same address already exists"
@@ -182,12 +182,12 @@ class MarkerManager:
     @property
     def device_address(self):
         """Returns the device address"""
-        return self.device_interface.device_address()
+        return self.device_interface.device_address
 
     @property
     def device_properties(self):
         """Returns the device properties"""
-        return self.device_interface.device_properties()
+        return self.device_interface.device_properties
 
     def close(self):
         """Closes the connection to the device."""
@@ -229,13 +229,21 @@ class MarkerManager:
                 is_fatal = True
                 Eid = "ValueWholeNumber"
                 raise MarkerError(err_msg, is_fatal, Eid)
-            
+
             # Value should be between 0 and 255:
             if value > 255 or value < 0:
                 err_msg = "Marker value out of range (0 - 255)."
                 is_fatal = True
                 Eid = "ValueOutOfRange"
                 raise MarkerError(err_msg, is_fatal, Eid)
+
+            # Send marker:
+            try:
+                self.device_interface._set_value(value)
+            except Exception as e:
+                err_msg = f"Could not send marker: {e}."
+                is_fatal = False
+                raise MarkerError(err_msg, is_fatal)
 
             # The same value should not be sent twice (except 0, that doesn't matter):
             if not len(self.set_value_list) == 0 and not value == 0:
@@ -258,21 +266,12 @@ class MarkerManager:
                         Eid = "ConcurrentMarkerThreshold"
                         raise MarkerError(err_msg, is_fatal, Eid)
 
-            # Send marker:
-            try:
-                self.device_interface._set_value(value)
-
-            except Exception as e:
-                err_msg = f"Could not send marker: {e}."
-                is_fatal = False
-                raise MarkerError(err_msg, is_fatal)
-
         except MarkerError as e:
             # Save error
             self.error_list.append({'time_ms': cur_time, 'error': e.message})
             if e.is_fatal or self.crash_on_marker_errors:
                 raise e
-                
+
         except Exception as e:
             err_msg = f'Unknown error in set_value: {e}'
             Eid = "BaseException"
@@ -428,14 +427,14 @@ class MarkerManager:
             marker_df.loc[index, "occurrence"] = occurrence
 
         # Create summary table
-        summary_df = marker_df[['value', 'occurrence']]
+        summary_df = marker_df.loc[:, ('value', 'occurrence')]
         summary_df["mean_duration"] = None
         summary_df["min_duration"] = None
         summary_df["max_duration"] = None
         summary_df["total_duration"] = None
         for index, val in enumerate(summary_df.value):
             all_durations = marker_df[summary_df["value"] == val].duration_ms.tolist()
-            summary_df.loc[index, 'mean_duration'] = (sum(all_durations))/len(all_durations)
+            summary_df.loc[index, 'mean_duration'] = (sum(all_durations)) / len(all_durations)
             summary_df.loc[index, 'min_duration'] = min(all_durations)
             summary_df.loc[index, 'max_duration'] = max(all_durations)
             summary_df.loc[index, 'total_duration'] = sum(all_durations)
@@ -446,7 +445,7 @@ class MarkerManager:
         error_df = pandas.DataFrame(self.error_list)
         if len(self.error_list) > 0:
             error_df["time_s"] = error_df["time_ms"] / 1000
-            error_df.drop("time_ms", axis = 1, inplace=True)
+            error_df.drop("time_ms", axis=1, inplace=True)
 
         return marker_df, summary_df, error_df
 
@@ -530,7 +529,7 @@ class MarkerManager:
         summary_df.squeeze()
         marker_df.squeeze()
         error_df.squeeze()
-        
+
         # Write data to tsv file
         with open(full_fn, 'w', newline='') as file_out:
             writer = csv.writer(file_out, delimiter='\t')
@@ -558,6 +557,7 @@ class MarkerManager:
 
 class MarkerError(Exception):
     """"Error sending a marker"""
+
     def __init__(self, message, is_fatal, Eid):
         super().__init__(message)
         self.message = message
@@ -567,6 +567,7 @@ class MarkerError(Exception):
 
 class MarkerManagerError(Exception):
     """Error involving the MarkerManager"""
+
     def __init__(self, message, Eid):
         super().__init__(message)
         self.message = message
@@ -575,6 +576,7 @@ class MarkerManagerError(Exception):
 
 class FindDeviceError(Exception):
     """Error finding the device"""
+
     def __init__(self, message, Eid):
         super().__init__(message)
         self.message = message
@@ -583,6 +585,7 @@ class FindDeviceError(Exception):
 
 class SerialError(Exception):
     """Error involving the serial device"""
+
     def __init__(self, message, Eid):
         super().__init__(message)
         self.message = message
@@ -620,7 +623,7 @@ class DeviceInterface(ABC):
         should be used by users since it performs generic checks and
         logs the markers."""
         pass
-    
+
     @abstractmethod
     def _close(self):
         """Closes the connection to the serial device, if necessary."""
@@ -649,9 +652,9 @@ class SerialDevice(DeviceInterface):
         self._device_address = device_address
 
         if not device_address == FAKE_ADDRESS:
-            
-            # Open device in command mode:
-            self.command_mode() # Future work: removing unnecessary self.command_mode() causes errors?
+
+            # Open device:
+            self.open_serial_device()
             timing.delay(100)
 
             # Example: {"Version":"HW1:SW1.2","Serialno":"S01234","Device":"UsbParMar"}
@@ -666,14 +669,6 @@ class SerialDevice(DeviceInterface):
                 err_msg = "Serialno missing."
                 Eid = "NoSerialNo"
                 raise SerialError(err_msg, Eid)
-
-            # Close device
-            self.serial_device.close()
-            timing.delay(100)
-
-            # Open device in data mode:
-            self.data_mode()
-            timing.delay(100)
 
         # return fake device
         else:
@@ -704,24 +699,15 @@ class SerialDevice(DeviceInterface):
         if not self.is_fake:
             self.serial_device.close()
 
-    def command_mode(self):
-        """Opens serial device in command mode."""
-        if not self.is_fake:
-            command_params = {"baudrate": 4800, "bytesize": 8,
-                              "parity": 'N', "stopbits": 1,
-                              "timeout": 2}
-            self.open_serial_device(command_params)
+    def open_serial_device(self, params=None):
+        """Opens serial device with specified parameters."""
 
-    def data_mode(self):
-        """Opens serial device in data mode."""
-        if not self.is_fake:
-            data_params = {"baudrate": 115200, "bytesize": 8,
-                           "parity": 'N', "stopbits": 1,
-                           "timeout": 2}
-            self.open_serial_device(data_params)
+        # Opens in data mode by default
+        if params is None:
+            params = {"baudrate": 115200, "bytesize": 8,
+                      "parity": 'N', "stopbits": 1,
+                      "timeout": 2}
 
-    def open_serial_device(self, params):
-        """Opens serial device with specified baudrate."""
         if not self.is_fake:
             # Create serial device.
             try:
@@ -731,6 +717,12 @@ class SerialDevice(DeviceInterface):
                 Eid = "NoSerialDeviceMade"
                 raise SerialError(err_msg, Eid)
 
+    def command_mode(self):
+        command_params = {"baudrate": 4800, "bytesize": 8,
+                          "parity": 'N', "stopbits": 1,
+                          "timeout": 2}
+        self.open_serial_device(params=command_params)
+
     def send_command(self, command):
         """Sends command to serial device."""
 
@@ -738,7 +730,12 @@ class SerialDevice(DeviceInterface):
             err_msg = "Fake device is not allowed to send commands."
             Eid = "FakeDeviceError"
             raise SerialError(err_msg, Eid)
+
         else:
+            # Close device and open in command mode
+            self.serial_device.close()
+            timing.delay(100)
+
             self.command_mode()
             timing.delay(100)
 
@@ -762,7 +759,6 @@ class SerialDevice(DeviceInterface):
 
                 # Get reply
                 data = self.serial_device.readline()
-
                 decoded_data = data.decode('utf-8')
 
                 # If reply is json string, decode it
@@ -773,7 +769,12 @@ class SerialDevice(DeviceInterface):
                 else:
                     decoded_data = json.loads(decoded_data)
 
-                self.data_mode()
+                # Close device
+                self.serial_device.close()
+                timing.delay(100)
+
+                # Open device again (in data mode by default)
+                self.open_serial_device()
                 timing.delay(100)
 
                 return decoded_data
@@ -821,9 +822,7 @@ class SerialDevice(DeviceInterface):
 
 class UsbParMarker(SerialDevice):
     """Class for the UsbParMarker."""
-    
-    
-    
+
     def leds_on(self):
         """Turns led lights on"""
         sw_version = self.get_sw_version()
@@ -839,7 +838,7 @@ class UsbParMarker(SerialDevice):
         sw_version = self.get_sw_version()
         if float(sw_version) < 1.3:
             warnings.warn('Check firmware version, could not turn off leds')
-            leds_on_answer = 'LedsOff'
+            leds_off_answer = 'LedsOff'
         else:
             leds_off_answer = self.send_command('O')
         return leds_off_answer
@@ -869,9 +868,9 @@ def whole_number(value):
     """Evaluate whether value is whole number."""
     try:
         return isinstance(value, int) or \
-                (isinstance(value, float) and value.is_integer())
+               (isinstance(value, float) and value.is_integer())
     except:
-        raise(MarkerManagerError('error whole number'))
+        raise (MarkerManagerError('error whole number'))
 
 
 def gen_com_filters(device_regex='^.*$',
@@ -879,7 +878,6 @@ def gen_com_filters(device_regex='^.*$',
                     sn_regex='^.*$',
                     com_dev_desc_regex='^.*$',
                     com_dev_hwid_regex='^USB VID:PID=2341:.*$'):
-
     # Return the COM filters:
     return {
         "device_regex": device_regex,
@@ -924,6 +922,7 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
         raise FindDeviceError(f"Only {available_devices} supported.", Eid)
 
     info = {}
+    temp_info = {}
 
     # Create filters
     device_regexp = "^.*$"
@@ -942,15 +941,14 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
                                   sn_regex=sn_regexp)
 
     # Params:
-    connected = False
     port_hit = False
-    device_hit = False
-    serial_hit = False
-    multiple_hit = False
+    device_hit = []
     connection_error = False
     connection_error_port = ''
     connection_error_info = ''
     port_list = []
+    connected_port_list = []
+    port_n = 0
 
     # Loop through ports
     ports_listed = comports()
@@ -963,7 +961,7 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
 
         if not (port_matches_request and com_dev_desc_matches and com_dev_hwid_matches):
             continue
-            
+
         # save ports in list
         port_list.append(port)
 
@@ -971,6 +969,7 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
 
         # At least one port with correct port, desc and hwid found
         port_hit = True
+        port_n += 1
 
         # Loop through ports and check devices
         for port in port_list:
@@ -989,46 +988,43 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
                 connection_error_info = sys.exc_info()[1]
                 continue
 
-            info["device"] = cur_device.device_properties()
+            temp_info["device"] = cur_device.device_properties
 
             # Check filter
-            device_matches_request = re.match(com_filters['device_regex'], info['device']['Device']) is not None
-            serial_matches_request = re.match(com_filters['sn_regex'], info['device']['Serialno']) is not None
+            device_matches_request = re.match(com_filters['device_regex'], temp_info['device']['Device']) is not None
+            serial_matches_request = re.match(com_filters['sn_regex'], temp_info['device']['Serialno']) is not None
 
-            if device_matches_request:
-                device_hit = True
-            if serial_matches_request:
-                serial_hit = True
-            if connected:
-                multiple_hit = True
-
-            info["com_port"] = port
-            connected = True
+            # save info when a match was found
+            if device_matches_request and serial_matches_request:
+                info["device"] = cur_device.device_properties
+                device_hit.append(True)
+                connected_port_list.append(port)
 
     # Checks:
     try:
 
-        # Check if any port was found:
+        # Check if any port was found
         if not port_hit:
             err_msg = "No device matched the specified COM address."
             Eid = "NoComMatch"
             raise FindDeviceError(err_msg, Eid)
 
+        # Check if one device was found
         if not device_hit:
-            err_msg = "No device matched the specified device type."
+            err_msg = "No device matched the specified device type and/or serial number."
             Eid = "NoDeviceMatch"
             raise FindDeviceError(err_msg, Eid)
+        else:
+            if device_hit.count(True) > 1:
+                err_msg = "Multiple matching devices found."
+                Eid = "MultipleConnections"
+                raise FindDeviceError(err_msg, Eid)
 
-        if not serial_hit:
-            err_msg = "No device matched the specified serial number."
-            Eid = "NoSerialMatch"
-            raise FindDeviceError(err_msg, Eid)
+            else:
+                device_hit_index = device_hit.index(True)
+                info["com_port"] = connected_port_list[device_hit_index]
 
-        if multiple_hit:
-            err_msg = "Multiple matching devices found."
-            Eid = "MultipleConnections"
-            raise FindDeviceError(err_msg, Eid)
-
+        # Check if connection error happened
         if connection_error:
             err_msg = f'Could not connect to "{connection_error_port}" because: {connection_error_info}'
             Eid = "NoConnection"

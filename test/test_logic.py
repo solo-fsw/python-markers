@@ -17,8 +17,8 @@ class TestDuplicateDevice(unittest.TestCase):
 
         device_type = "UsbParMarker"
         mock_instance_class = MagicMock()
-        mock_instance_class.device_properties.return_value = {"Device": device_type}
-        mock_instance_class.device_address.return_value = "123"
+        mock_instance_class.device_properties = {"Device": device_type}
+        mock_instance_class.device_address = "123"
         with self.assertRaises(marker_management.MarkerManagerError) as e:
             with patch("marker_management.UsbParMarker", return_value=mock_instance_class) as mock_instance:
                 device1 = marker_management.MarkerManager(device_type, device_address="123")
@@ -367,17 +367,17 @@ class TestFindDevice(unittest.TestCase):
             with patch("marker_management.comports") as mock_comports:
                 mock_comports.return_value = [("A", "1a", "USB VID:PID=2341:1")]
                 mock_serial_class = MagicMock()
-                mock_serial_class.device_properties = Mock(return_value={"Device": "UsbParMarker", "Serialno": ""})
+                mock_serial_class.device_properties = {"Device": "UsbParMarker", "Serialno": "1"}
                 with patch("marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
                     answer = marker_management.find_device(device_type="UsbParMarker", serial_no="104")
-        self.assertEqual(str(e.exception.id), "NoSerialMatch")
+        self.assertEqual(str(e.exception.id), "NoDeviceMatch")
 
     def test_multiple_connections(self):
         with self.assertRaises(marker_management.FindDeviceError) as e:
             with patch("marker_management.comports") as mock_comports:
                 mock_comports.return_value = [("A", "1a", "USB VID:PID=2341:1"), ("B", "2b", "USB VID:PID=2341:2")]
                 mock_serial_class = MagicMock()
-                mock_serial_class.device_properties.return_value = {"Device": "UsbParMarker", "Serialno": "1"}
+                mock_serial_class.device_properties = {"Device": "UsbParMarker", "Serialno": "1"}
                 mock_serial_class._close.return_value = None
                 with patch("marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
                     answer = marker_management.find_device(device_type="UsbParMarker", serial_no="1")
@@ -389,7 +389,7 @@ class TestFindDevice(unittest.TestCase):
                 mock_comports.return_value = [("A", "1a", "USB VID:PID=2341:1"), ("A", "1a", "USB VID:PID=2341:1")]
                 mock_serial_class = MagicMock()
                 mock_serial_class._close.side_effect = ["No error first time around", Exception("This is an error"), "This is not"]
-                mock_serial_class.device_properties.side_effect = [{"Device": "UsbParMarker", "Serialno": "1"}, {"Device": "UsbParMarker", "Serialno": "2"}]
+                mock_serial_class.device_properties = {"Device": "UsbParMarker", "Serialno": "1"}
                 with patch("marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
                     answer = marker_management.find_device(device_type="UsbParMarker", serial_no="")
         self.assertEqual(str(e.exception.id), "NoConnection")
@@ -398,7 +398,7 @@ class TestFindDevice(unittest.TestCase):
         with patch("marker_management.comports") as mock_comports:
                 mock_comports.return_value = [("A", "1a", "USB VID:PID=2341:1")]
                 mock_serial_class = MagicMock()
-                mock_serial_class.device_properties.return_value = {"Version": "0001", "Serialno": "1", "Device": "UsbParMarker"}
+                mock_serial_class.device_properties = {"Version": "0001", "Serialno": "1", "Device": "UsbParMarker"}
                 with patch("marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
                     answer = marker_management.find_device(device_type="UsbParMarker", serial_no="1")
         correct = {"device": {"Version": "0001", "Serialno": "1", "Device": "UsbParMarker"}, "com_port": "A"}
@@ -413,7 +413,7 @@ class TestSerialDevice(unittest.TestCase):
 
     def test_empty_properties(self):
         with self.assertRaises(marker_management.SerialError) as e:
-            with patch("marker_management.SerialDevice.command_mode") as mock_command_mode:
+            with patch("marker_management.SerialDevice.open_serial_device") as mock_open_serial:
                 with patch("marker_management.SerialDevice.get_info") as mock_get_info:
                     mock_get_info.return_value = ""
                     device = marker_management.SerialDevice("104")
@@ -421,7 +421,7 @@ class TestSerialDevice(unittest.TestCase):
 
     def test_serialno_missing(self):
         with self.assertRaises(marker_management.SerialError) as e:
-            with patch("marker_management.SerialDevice.command_mode") as mock_command_mode:
+            with patch("marker_management.SerialDevice.open_serial_device") as mock_open_serial:
                 with patch("marker_management.SerialDevice.get_info") as mock_get_info:
                     mock_get_info.return_value = "not the correct format"
                     device = marker_management.SerialDevice("104")

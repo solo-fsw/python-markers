@@ -51,68 +51,58 @@ An example of using the library in python is shown below.
 ```python
 import marker_management as mark
 import time
-import GS_timing as timing
+import utils.GS_timing as timing
 
-
-# Find the address and make the marker object:
-# Provide the type of device the library needs to connect to
+# Find the address and make the marker_manager object:
 marker_device_type = 'Eva'
-
-# Find the device information. If no compatible device is found, fake information is returned (fallback_to_fake = True)
 device_info = mark.find_device(device_type=marker_device_type, fallback_to_fake=True)
-
-# Retrieve the comport from the found information (dictionary) and use it to create a MarkerManager class.
 marker_address = device_info['com_port']
 marker_manager = mark.MarkerManager(marker_device_type, marker_address, crash_on_marker_errors=False)
 
-# Print some properties of the connected device using the created class.
+# Print the address and properties
 print(marker_manager.device_address)
 print(marker_manager.device_properties)
 
-# Check if the connection is real or fake
-print(marker_manager.is_fake())  # True if fake, False if real
-
-# Send markers when needed (in this case a marker with value 1, a marker with value 3 and a marker with value 5)
-marker_manager.set_bits('00000001')
-marker_manager.set_bit(1, 'on')
-marker_manager.set_value(5)
-
-# It is good practice to insert a small time period between markers and to reset the marker back to 0 before sending another one.
+# Send markers
+# (As an example, sending the marker sequence below will result
+# in two errors that are saved in the error table)
+marker_manager.set_value(255)
+timing.delay(100)
 marker_manager.set_value(0)
-timing.delay(100)
-marker_manager.set_value(3)
-timing.delay(100)
+timing.delay(1000)
 marker_manager.set_value(3)
 timing.delay(100)
 marker_manager.set_value(0)
+timing.delay(1000)
+marker_manager.set_value(3)
 timing.delay(100)
 marker_manager.set_value(0)
-timing.delay(100)
+timing.delay(1000)
 marker_manager.set_value(2)
 timing.delay(100)
+marker_manager.set_value(2)
+timing.delay(5)
 marker_manager.set_value(0)
-timing.delay(100)
-marker_manager.set_value(3)
-marker_manager.set_value(0)
-timing.delay(100)
+timing.delay(1000)
 
-# Close the connection to the device
-marker_manager.close()
-
-# Create a table containing all information about the sent markers, a short summary of this table, and a summary of the ignored errors (because crash_on_marker_errors = False).
+# Generate marker tables, save and print them
 marker_table, marker_summary, errors = marker_manager.gen_marker_table()
 marker_manager.save_marker_table()
 marker_manager.print_marker_table()
+
+# Close device
+marker_manager.close()
 ```
 This example shows how python code can be used to create a connection with the device, how to send markers through the device and how to subsequently create a log containing information about the sent markers.
 
 
-~ *Links to OpenSesame and psychopy examples.* ~
+For OpenSesame, the marker_manager module has been implemented in a [plugin](https://github.com/solo-fsw/opensesame_plugin_markers).
 
 
 ## References ##
 
 - [SOLO wiki on markers](https://researchwiki.solo.universiteitleiden.nl/xwiki/wiki/researchwiki.solo.universiteitleiden.nl/view/Hardware/Markers%20and%20Events/)
+- [OpenSesame Markers plugin](https://github.com/solo-fsw/opensesame_plugin_markers)
 - [SOLO wiki on the UsbParMarker](https://researchwiki.solo.universiteitleiden.nl/xwiki/wiki/researchwiki.solo.universiteitleiden.nl/view/Hardware/Markers%20and%20Events/UsbParMarker/)
 - [UsbParMarker github page](https://github.com/solo-fsw/UsbParMarker)
 - [SOLO wiki on Eva](https://researchwiki.solo.universiteitleiden.nl/xwiki/wiki/researchwiki.solo.universiteitleiden.nl/view/Hardware/Markers%20and%20Events/EVA/)
