@@ -24,6 +24,8 @@ At the FSW, markers are typically sent in an 8-bit format using a parallel port.
 ## Getting started ##
 
 ### Development ###
+> Some files were omitted from the file structure as shown below. These files were automatically generated, and require no alteration after modification of the repository.
+
 In this section we will discuss the location and function of the files found in this repository (`python-markers`). Currently, the repository has the following structure:
 
 ```
