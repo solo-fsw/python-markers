@@ -19,7 +19,7 @@ These markers have the following properties:
 - **Duration:** The time between the start and end of a marker is the duration of the marker.
 - **Occurrence (number):** The same marker value can be sent multiple times, thus each marker has an occurrence.
 
-At the FSW, markers are typically sent in an 8-bit format using a parallel port. Since the parallel port is no longer implemented in newer devices SOLO developed two devices capable of replacing the parallel port by converting binary signals to decimal signals and thereby facilitating a transition from the parallel port to a usb port. These devices are called _UsbParMarker_ and _Eva_. The marker_management module provides the software necesarry for this conversion.
+At the FSW, markers are typically sent in an 8-bit format using a parallel port. Since the parallel port is no longer implemented in newer devices SOLO developed two devices capable of replacing the parallel port by converting binary signals to decimal signals and thereby facilitating a transition from the parallel port to a usb port. These devices are called _UsbParMarker_ and _Eva_. The marker_management module provides the software necessary for this conversion.
 
 ## Getting started ##
 
