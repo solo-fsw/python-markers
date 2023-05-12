@@ -1,10 +1,10 @@
 [build-system]  # TODO: pyserial, pandas, prettytable
-requires = ["setuptools>=61.0"]
+requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "python_markers"
-version = "0.0.1.2"  # TODO: Version specification should match the one in the code
+version = "0.0.1.11"  # TODO: Version specification should match the one in the code
 authors = [
 #   { name="Elio", email="elio@email.test" },  # TODO: Author email
 #   { name="Iris", email="iris@email.test"},
@@ -15,10 +15,18 @@ readme = "README.md"
 requires-python = ">=3.7"  # TODO: Python versions
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",  # TODO: License name
-    "Operating System :: OS Independent",  # TODO: OS
+    "License :: OSI Approved :: MIT License",  # TODO: License name: GPL-3.0?
+    "Operating System :: OS Independent",  # TODO: OS: windows?
+]
+keywords = []
+dependencies = [
+    "pyserial==3.5",
+    "pandas==2.0.1",
+    "prettytable==3.7.0"
 ]
 
-[project.urls]  # TODO: Extra links
-"Homepage" = "https://github.com/pypa/sampleproject"
-"Bug Tracker" = "https://github.com/pypa/sampleproject/issues"
+[project.optional-dependencies]
+test = []
+
+[project.urls]
+"Repository" = "https://github.com/solo-fsw/python-markers"
