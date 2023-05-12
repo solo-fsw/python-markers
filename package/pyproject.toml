@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "python_markers"
-version = "0.0.1.11"  # TODO: Version specification should match the one in the code
+version = "0.0.1.12"  # TODO: Version specification should match the one in the code
 authors = [
 #   { name="Elio", email="elio@email.test" },  # TODO: Author email
 #   { name="Iris", email="iris@email.test"},
