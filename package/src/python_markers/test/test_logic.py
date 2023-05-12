@@ -436,7 +436,7 @@ class TestSerialDevice(unittest.TestCase):
         with self.assertRaises(marker_management.SerialError) as e:
             mock_serial_device = MagicMock()
             mock_serial_device.baudrate = 20
-            with patch("python_markers.marker_management.serial.Serial", return_value=mock_serial_device) as mock_serial:
+            with patch("python_markers.marker_management.serial", return_value=mock_serial_device) as mock_serial:
                 device = marker_management.SerialDevice("104")
         self.assertEqual(str(e.exception.id), "BaudrateNotCommandmode")
 
@@ -445,7 +445,7 @@ class TestSerialDevice(unittest.TestCase):
            mock_serial_device = MagicMock()
            mock_serial_device.baudrate = 4800
            mock_serial_device.is_open = False
-           with patch("python_markers.marker_management.serial.Serial", return_value=mock_serial_device) as mock_serial:
+           with patch("python_markers.marker_management.serial", return_value=mock_serial_device) as mock_serial:
                 device = marker_management.SerialDevice("104")
        self.assertEqual(str(e.exception.id), "SerialDeviceClosed")
 
@@ -455,7 +455,7 @@ class TestSerialDevice(unittest.TestCase):
            mock_serial_device.baudrate = 4800
            mock_serial_device.is_open = True
            mock_serial_device.readline.return_value = 'testsetset'.encode()
-           with patch("python_markers.marker_management.serial.Serial", return_value=mock_serial_device) as mock_serial:
+           with patch("python_markers.marker_management.serial", return_value=mock_serial_device) as mock_serial:
              with patch("python_markers.marker_management.SerialDevice.get_info") as mock_get_info:
                     mock_get_info.return_value = ["Serialno"]
                     device = marker_management.SerialDevice("104")
@@ -467,7 +467,7 @@ class TestSerialDevice(unittest.TestCase):
         mock_serial_device.baudrate = 4800
         mock_serial_device.is_open = True
         mock_serial_device.readline.return_value = 'testsetset'.encode()
-        with patch("python_markers.marker_management.serial.Serial", return_value=mock_serial_device) as mock_serial:
+        with patch("python_markers.marker_management.serial", return_value=mock_serial_device) as mock_serial:
             with patch("python_markers.marker_management.SerialDevice.get_info") as mock_get_info:
                 mock_get_info.return_value = ["Serialno"]
                 device = marker_management.SerialDevice("104")
