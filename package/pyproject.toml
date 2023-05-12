@@ -3,12 +3,12 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "python-markers"
-version = "0.0.1"  # TODO: Version specification should match the one in the code
+name = "python_markers"
+version = "0.0.1.2"  # TODO: Version specification should match the one in the code
 authors = [
-  { name="Elio", email="???" },  # TODO: Author email
-  { name="Iris", email="???"},
-  { name="Jens", email="???"}
+#   { name="Elio", email="elio@email.test" },  # TODO: Author email
+#   { name="Iris", email="iris@email.test"},
+  { name="Jens", email="j.van.bijsterveld@fsw.leidenuniv.nl"}
 ]
 description = "A package meant for sending markers using the various digital output devices used at the FSW."
 readme = "README.md"
@@ -16,7 +16,7 @@ requires-python = ">=3.7"  # TODO: Python versions
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",  # TODO: License name
-    "Operating System :: Windows?",  # TODO: OS
+    "Operating System :: OS Independent",  # TODO: OS
 ]
 
 [project.urls]  # TODO: Extra links

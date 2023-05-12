@@ -1,6 +1,6 @@
 # Example of using the marker_management module.
 
-import marker_management as mark
+from . import marker_management as mark
 import time
 import utils.GS_timing as timing
 
