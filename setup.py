@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 import python_markers.version_info as version_info
 import os
 import glob
@@ -26,8 +26,17 @@ setup(
         "pandas",
         "prettytable"    
     ],
-    py_modules = ["python_markers"],
+    # py_modules = ["python_markers"],
+    packages = find_packages(include = ["python_markers", "python_markers.*"])
     # data_files=[("utils",
 	# 	 files("utils/*"))]
 )
 
+
+# from setuptools import setup, find_packages
+
+# setup(
+#     name='example',
+#     version='0.1.0',
+#     packages=find_packages(include=['exampleproject', 'exampleproject.*'])
+# )
