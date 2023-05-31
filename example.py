@@ -2,7 +2,7 @@
 
 import python_markers.marker_management as mark
 import time
-import utils.GS_timing as timing
+import python_markers.GS_timing as timing
 
 # Find the address and make the marker_manager object:
 marker_device_type = 'Eva'

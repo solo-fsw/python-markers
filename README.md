@@ -33,7 +33,6 @@ PYTHON-MARKERS
 │   .gitignore
 │   example.py
 │   LICENSE
-│   marker_management.py
 │   README.md
 │
 ├───.github
@@ -47,7 +46,9 @@ PYTHON-MARKERS
 │   │   test_device_coupeling.py
 │   └───test_logic.py
 │
-└───utils
+└───python_markers
+    |   marker_management.py
+    |   version_info.py
     └───GS_timing.py 
 
 ```
@@ -61,12 +62,23 @@ Files used by GitHub (for rendering this text, showing the license, etc) can be 
 
 The `test` directory holds the files used for (automated) testing of the library. `test/test_device_coupeling.py` has (unfinished) tests for detecting hardware connections. `test/test_logic.py` uses patching to test the library without needing hardware.
 
-The main libarary code is defined in `marker_management.py`. Some helperfunctions are stored in `utils/GS_timing.py`. An example of usage of this library is given in `example.py`.
+The main libarary code is defined in `marker_management.py`. Helperfunctions for precise time management are stored in `GS_timing.py`. An example of usage of this library is given in `example.py`.
+
+### Using pip ###
+
+For ease of use the library can be imported into your project using `pip install`. This can be done by entering the following command in the terminal:
+
+`python -m pip install git+https://github.com/solo-fsw/python-markers`
+
+Where python is the path to your python executable. The main library can be used with `import python_markers.marker_manager`.
+
+<!-- TODO: Conda venv usage with pip -->
+<!-- TODO: Demo YAML file: python 3.8 - psychopy -->
 
 ### Using Submodules ###
 > *The information provided here is a summary of the information provided by github. For more information on git submodules, follow the link to the git documentation provided under __References__.*
 
-It is strongly recommended to add this repository as a git submodule to your project. This can be done as follows:
+Alternatively, this repository can be added to your project as a git submodule. This can be done as follows:
 1. Adding the submodule
     - To use the a submodule in your repository, first add it using the `git submodule` command:
 ```
@@ -90,7 +102,7 @@ An example of using the library in python is shown below.
 ```python
 import marker_management as mark
 import time
-import utils.GS_timing as timing
+import python_markers.GS_timing as timing
 
 # Find the address and make the marker_manager object:
 marker_device_type = 'Eva'
