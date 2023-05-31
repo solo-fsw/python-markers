@@ -27,7 +27,7 @@ setup(
         "prettytable"    
     ],
     # py_modules = ["python_markers"],
-    packages = find_packages(include = ["python_markers", "python_markers.*"])
+    packages = find_packages(include = ["python_markers.marker_management", "python_markers.version_info"])
     # data_files=[("utils",
 	# 	 files("utils/*"))]
 )
