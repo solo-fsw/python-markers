@@ -1,5 +1,5 @@
 from setuptools import setup
-import version_info
+import python_markers.version_info as version_info
 import os
 import glob
 
@@ -26,8 +26,8 @@ setup(
         "pandas",
         "prettytable"    
     ],
-    py_modules = ["marker_management"],
-    data_files=[("utils",
-		 files("utils/*"))]
+    py_modules = ["python_markers"],
+    # data_files=[("utils",
+	# 	 files("utils/*"))]
 )
 

@@ -33,7 +33,7 @@ import csv
 from serial.tools.list_ports import comports
 import warnings
 
-import version_info
+import python_markers.version_info as version_info
 
 # Current library version
 LIB_VERSION = version_info.version

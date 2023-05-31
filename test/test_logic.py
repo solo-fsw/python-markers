@@ -1,6 +1,6 @@
 import unittest
 import time
-import marker_management
+import python_markers.marker_management as marker_management
 import pandas
 from unittest.mock import patch, Mock, MagicMock
 
