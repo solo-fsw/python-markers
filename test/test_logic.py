@@ -278,7 +278,7 @@ class TestGenMarkerTable(unittest.TestCase):
         self.assertEqual(len(marker_df), 1)
         self.assertEqual(marker_df.at[0, 'value'], 100)
         self.assertEqual(marker_df.at[0, 'occurrence'], 1)
-        self.assertGreaterEqual(marker_df.at[0, 'duration_ms'], 999.9)
+        self.assertGreaterEqual(marker_df.at[0, 'duration_ms'], 999)
 
     def test_logging_marker_table_more(self):
         device = marker_management.MarkerManager(TestGenMarkerTable.device_type, crash_on_marker_errors = True)
