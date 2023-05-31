@@ -20,7 +20,7 @@ class TestDuplicateDevice(unittest.TestCase):
         mock_instance_class.device_properties = {"Device": device_type}
         mock_instance_class.device_address = "123"
         with self.assertRaises(marker_management.MarkerManagerError) as e:
-            with patch("marker_management.UsbParMarker", return_value=mock_instance_class) as mock_instance:
+            with patch("python_markers.marker_management.UsbParMarker", return_value=mock_instance_class) as mock_instance:
                 device1 = marker_management.MarkerManager(device_type, device_address="123")
                 # Create duplicate class
                 device2 = marker_management.MarkerManager(device_type, device_address="123")
@@ -357,49 +357,49 @@ class TestFindDevice(unittest.TestCase):
 
     def test_no_device_match(self):
         with self.assertRaises(marker_management.FindDeviceError) as e:
-            with patch("marker_management.comports") as mock_comports:
+            with patch("python_markers.marker_management.comports") as mock_comports:
                 mock_comports.return_value = [("A", "1a", "USB VID:PID=2341:1")]
                 answer = marker_management.find_device(device_type="UsbParMarker")
         self.assertEqual(str(e.exception.id), "NoDeviceMatch")
 
     def test_no_serial_match(self):
         with self.assertRaises(marker_management.FindDeviceError) as e:
-            with patch("marker_management.comports") as mock_comports:
+            with patch("python_markers.marker_management.comports") as mock_comports:
                 mock_comports.return_value = [("A", "1a", "USB VID:PID=2341:1")]
                 mock_serial_class = MagicMock()
                 mock_serial_class.device_properties = {"Device": "UsbParMarker", "Serialno": "1"}
-                with patch("marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
+                with patch("python_markers.marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
                     answer = marker_management.find_device(device_type="UsbParMarker", serial_no="104")
         self.assertEqual(str(e.exception.id), "NoDeviceMatch")
 
     def test_multiple_connections(self):
         with self.assertRaises(marker_management.FindDeviceError) as e:
-            with patch("marker_management.comports") as mock_comports:
+            with patch("python_markers.marker_management.comports") as mock_comports:
                 mock_comports.return_value = [("A", "1a", "USB VID:PID=2341:1"), ("B", "2b", "USB VID:PID=2341:2")]
                 mock_serial_class = MagicMock()
                 mock_serial_class.device_properties = {"Device": "UsbParMarker", "Serialno": "1"}
                 mock_serial_class._close.return_value = None
-                with patch("marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
+                with patch("python_markers.marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
                     answer = marker_management.find_device(device_type="UsbParMarker", serial_no="1")
         self.assertEqual(str(e.exception.id), "MultipleConnections")
 
     def test_connection_error(self):
         with self.assertRaises(marker_management.FindDeviceError) as e:
-            with patch("marker_management.comports") as mock_comports:
+            with patch("python_markers.marker_management.comports") as mock_comports:
                 mock_comports.return_value = [("A", "1a", "USB VID:PID=2341:1"), ("A", "1a", "USB VID:PID=2341:1")]
                 mock_serial_class = MagicMock()
                 mock_serial_class._close.side_effect = ["No error first time around", Exception("This is an error"), "This is not"]
                 mock_serial_class.device_properties = {"Device": "UsbParMarker", "Serialno": "1"}
-                with patch("marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
+                with patch("python_markers.marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
                     answer = marker_management.find_device(device_type="UsbParMarker", serial_no="")
         self.assertEqual(str(e.exception.id), "NoConnection")
 
     def test_correct_information_mock(self):
-        with patch("marker_management.comports") as mock_comports:
+        with patch("python_markers.marker_management.comports") as mock_comports:
                 mock_comports.return_value = [("A", "1a", "USB VID:PID=2341:1")]
                 mock_serial_class = MagicMock()
                 mock_serial_class.device_properties = {"Version": "0001", "Serialno": "1", "Device": "UsbParMarker"}
-                with patch("marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
+                with patch("python_markers.marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
                     answer = marker_management.find_device(device_type="UsbParMarker", serial_no="1")
         correct = {"device": {"Version": "0001", "Serialno": "1", "Device": "UsbParMarker"}, "com_port": "A"}
         self.assertEqual(answer, correct)
@@ -413,16 +413,16 @@ class TestSerialDevice(unittest.TestCase):
 
     def test_empty_properties(self):
         with self.assertRaises(marker_management.SerialError) as e:
-            with patch("marker_management.SerialDevice.open_serial_device") as mock_open_serial:
-                with patch("marker_management.SerialDevice.get_info") as mock_get_info:
+            with patch("python_markers.marker_management.SerialDevice.open_serial_device") as mock_open_serial:
+                with patch("python_markers.marker_management.SerialDevice.get_info") as mock_get_info:
                     mock_get_info.return_value = ""
                     device = marker_management.SerialDevice("104")
         self.assertEqual(str(e.exception.id), "NoResponse")
 
     def test_serialno_missing(self):
         with self.assertRaises(marker_management.SerialError) as e:
-            with patch("marker_management.SerialDevice.open_serial_device") as mock_open_serial:
-                with patch("marker_management.SerialDevice.get_info") as mock_get_info:
+            with patch("python_markers.marker_management.SerialDevice.open_serial_device") as mock_open_serial:
+                with patch("python_markers.marker_management.SerialDevice.get_info") as mock_get_info:
                     mock_get_info.return_value = "not the correct format"
                     device = marker_management.SerialDevice("104")
         self.assertEqual(str(e.exception.id), "NoSerialNo")
@@ -436,7 +436,7 @@ class TestSerialDevice(unittest.TestCase):
         with self.assertRaises(marker_management.SerialError) as e:
             mock_serial_device = MagicMock()
             mock_serial_device.baudrate = 20
-            with patch("marker_management.serial.Serial", return_value=mock_serial_device) as mock_serial:
+            with patch("python_markers.marker_management.serial.Serial", return_value=mock_serial_device) as mock_serial:
                 device = marker_management.SerialDevice("104")
         self.assertEqual(str(e.exception.id), "BaudrateNotCommandmode")
 
@@ -445,7 +445,7 @@ class TestSerialDevice(unittest.TestCase):
            mock_serial_device = MagicMock()
            mock_serial_device.baudrate = 4800
            mock_serial_device.is_open = False
-           with patch("marker_management.serial.Serial", return_value=mock_serial_device) as mock_serial:
+           with patch("python_markers.marker_management.serial.Serial", return_value=mock_serial_device) as mock_serial:
                 device = marker_management.SerialDevice("104")
        self.assertEqual(str(e.exception.id), "SerialDeviceClosed")
 
@@ -455,8 +455,8 @@ class TestSerialDevice(unittest.TestCase):
            mock_serial_device.baudrate = 4800
            mock_serial_device.is_open = True
            mock_serial_device.readline.return_value = 'testsetset'.encode()
-           with patch("marker_management.serial.Serial", return_value=mock_serial_device) as mock_serial:
-             with patch("marker_management.SerialDevice.get_info") as mock_get_info:
+           with patch("python_markers.marker_management.serial.Serial", return_value=mock_serial_device) as mock_serial:
+             with patch("python_markers.marker_management.SerialDevice.get_info") as mock_get_info:
                     mock_get_info.return_value = ["Serialno"]
                     device = marker_management.SerialDevice("104")
                     device.send_command(12)
@@ -467,8 +467,8 @@ class TestSerialDevice(unittest.TestCase):
         mock_serial_device.baudrate = 4800
         mock_serial_device.is_open = True
         mock_serial_device.readline.return_value = 'testsetset'.encode()
-        with patch("marker_management.serial.Serial", return_value=mock_serial_device) as mock_serial:
-            with patch("marker_management.SerialDevice.get_info") as mock_get_info:
+        with patch("python_markers.marker_management.serial.Serial", return_value=mock_serial_device) as mock_serial:
+            with patch("python_markers.marker_management.SerialDevice.get_info") as mock_get_info:
                 mock_get_info.return_value = ["Serialno"]
                 device = marker_management.SerialDevice("104")
 
