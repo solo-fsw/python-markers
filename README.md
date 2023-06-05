@@ -68,12 +68,41 @@ The main libarary code is defined in `marker_management.py`. Helperfunctions for
 
 For ease of use the library can be imported into your project using `pip install`. This can be done by entering the following command in the terminal:
 
-`python -m pip install git+https://github.com/solo-fsw/python-markers`
+```
+python -m pip install git+https://github.com/solo-fsw/python-markers
+```
 
 Where python is the path to your python executable. The main library can be used with `import python_markers.marker_manager`.
 
-<!-- TODO: Conda venv usage with pip -->
-<!-- TODO: Demo YAML file: python 3.8 - psychopy -->
+### Using Conda ###
+
+The library can also be imported into your conda environment. This method also uses pip install, but then from within the conda environment:
+
+1. Activate your conda environment
+    - For activation use: `source activate myenv`
+2. Ensure git and pip are installed in the conda environment
+    - They can be installed with: `conda install git pip`
+3. Use pip to install the library in the conda environment
+    - The command is highly similar to the one shown above: `pip install git+https://github.com/solo-fsw/python-markers`
+
+A conda environment containing the library can also be directly made from an `environment.yml` file using the command:
+
+```
+conda env create -f environment.yml
+```
+
+An example `.yml` file (creating an environment containing `numpy` and the marker management library for `python 3.8`) is shown below:
+
+```yml
+name: sample_env
+channels:
+dependencies:
+    - python=3.8
+    - numpy
+    - pip
+    - pip:
+        - "--editable=git+https://github.com/solo-fsw/python-markers"
+```
 
 ### Using Submodules ###
 > *The information provided here is a summary of the information provided by github. For more information on git submodules, follow the link to the git documentation provided under __References__.*
@@ -84,7 +113,7 @@ Alternatively, this repository can be added to your project as a git submodule. 
 ```
 git submodule add <https://github.com/solo-fsw/python-markers.git> marker_management
 ``` 
-1. Update the submodule
+2. Update the submodule
     - After adding the submodule to your repository, update it to the latest commit using:
 ```
 git submodule update
