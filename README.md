@@ -33,7 +33,6 @@ PYTHON-MARKERS
 │   .gitignore
 │   example.py
 │   LICENSE
-│   marker_management.py
 │   README.md
 │
 ├───.github
@@ -47,7 +46,9 @@ PYTHON-MARKERS
 │   │   test_device_coupeling.py
 │   └───test_logic.py
 │
-└───utils
+└───python_markers
+    |   marker_management.py
+    |   version_info.py
     └───GS_timing.py 
 
 ```
@@ -61,18 +62,58 @@ Files used by GitHub (for rendering this text, showing the license, etc) can be 
 
 The `test` directory holds the files used for (automated) testing of the library. `test/test_device_coupeling.py` has (unfinished) tests for detecting hardware connections. `test/test_logic.py` uses patching to test the library without needing hardware.
 
-The main libarary code is defined in `marker_management.py`. Some helperfunctions are stored in `utils/GS_timing.py`. An example of usage of this library is given in `example.py`.
+The main libarary code is defined in `marker_management.py`. Helperfunctions for precise time management are stored in `GS_timing.py`. An example of usage of this library is given in `example.py`.
+
+### Using pip ###
+
+For ease of use the library can be imported into your project using `pip install`. This can be done by entering the following command in the terminal:
+
+```
+python -m pip install git+https://github.com/solo-fsw/python-markers
+```
+
+Where python is the path to your python executable. The main library can be used with `import python_markers.marker_manager`.
+
+### Using Conda ###
+
+The library can also be imported into your conda environment. This method also uses pip install, but then from within the conda environment:
+
+1. Activate your conda environment
+    - For activation use: `source activate myenv`
+2. Ensure git and pip are installed in the conda environment
+    - They can be installed with: `conda install git pip`
+3. Use pip to install the library in the conda environment
+    - The command is highly similar to the one shown above: `pip install git+https://github.com/solo-fsw/python-markers`
+
+A conda environment containing the library can also be directly made from an `environment.yml` file using the command:
+
+```
+conda env create -f environment.yml
+```
+
+An example `.yml` file (creating an environment containing `numpy` and the marker management library for `python 3.8`) is shown below:
+
+```yml
+name: sample_env
+channels:
+dependencies:
+    - python=3.8
+    - numpy
+    - pip
+    - pip:
+        - "--editable=git+https://github.com/solo-fsw/python-markers"
+```
 
 ### Using Submodules ###
 > *The information provided here is a summary of the information provided by github. For more information on git submodules, follow the link to the git documentation provided under __References__.*
 
-It is strongly recommended to add this repository as a git submodule to your project. This can be done as follows:
+Alternatively, this repository can be added to your project as a git submodule. This can be done as follows:
 1. Adding the submodule
     - To use the a submodule in your repository, first add it using the `git submodule` command:
 ```
 git submodule add <https://github.com/solo-fsw/python-markers.git> marker_management
 ``` 
-1. Update the submodule
+2. Update the submodule
     - After adding the submodule to your repository, update it to the latest commit using:
 ```
 git submodule update
@@ -84,56 +125,10 @@ Using this repository as a git submodule has the following advantages:
 - Using the submodule allows you to keep your repository light, only including the submodule reference instead of the whole repository
 
 ### Examples ###
-> *The python example provided below is also available as a python file in the repository (example.py). In the example extra comments were added for additional clarity.*
-> 
-An example of using the library in python is shown below.
-```python
-import marker_management as mark
-import time
-import utils.GS_timing as timing
 
-# Find the address and make the marker_manager object:
-marker_device_type = 'Eva'
-device_info = mark.find_device(device_type=marker_device_type, fallback_to_fake=True)
-marker_address = device_info['com_port']
-marker_manager = mark.MarkerManager(marker_device_type, marker_address, crash_on_marker_errors=False)
+Example code on using the Marker Management library can be found in the root of the repository (example.py).
 
-# Print the address and properties
-print(marker_manager.device_address)
-print(marker_manager.device_properties)
-
-# Send markers
-# (As an example, sending the marker sequence below will result
-# in two errors that are saved in the error table)
-marker_manager.set_value(255)
-timing.delay(100)
-marker_manager.set_value(0)
-timing.delay(1000)
-marker_manager.set_value(3)
-timing.delay(100)
-marker_manager.set_value(0)
-timing.delay(1000)
-marker_manager.set_value(3)
-timing.delay(100)
-marker_manager.set_value(0)
-timing.delay(1000)
-marker_manager.set_value(2)
-timing.delay(100)
-marker_manager.set_value(2)
-timing.delay(5)
-marker_manager.set_value(0)
-timing.delay(1000)
-
-# Generate marker tables, save and print them
-marker_table, marker_summary, errors = marker_manager.gen_marker_table()
-marker_manager.save_marker_table()
-marker_manager.print_marker_table()
-
-# Close device
-marker_manager.close()
-```
 This example shows how python code can be used to create a connection with the device, how to send markers through the device and how to subsequently create a log containing information about the sent markers.
-
 
 For OpenSesame, the marker_manager module has been implemented in a [plugin](https://github.com/solo-fsw/opensesame_plugin_markers).
 

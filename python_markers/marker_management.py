@@ -21,7 +21,7 @@ Notes:
 """
 
 from abc import ABC, abstractmethod
-import utils.GS_timing as timing
+import python_markers.GS_timing as timing
 import serial
 import datetime
 import json
@@ -33,8 +33,10 @@ import csv
 from serial.tools.list_ports import comports
 import warnings
 
+import python_markers.version_info as version_info
+
 # Current library version
-LIB_VERSION = "0.0.1"
+LIB_VERSION = version_info.version
 
 # Address string indicating that the device is being faked/spoofed:
 FAKE_ADDRESS = 'FAKE'
