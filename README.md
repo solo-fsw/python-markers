@@ -125,56 +125,10 @@ Using this repository as a git submodule has the following advantages:
 - Using the submodule allows you to keep your repository light, only including the submodule reference instead of the whole repository
 
 ### Examples ###
-> *The python example provided below is also available as a python file in the repository (example.py). In the example extra comments were added for additional clarity.*
-> 
-An example of using the library in python is shown below.
-```python
-import marker_management as mark
-import time
-import python_markers.GS_timing as timing
 
-# Find the address and make the marker_manager object:
-marker_device_type = 'Eva'
-device_info = mark.find_device(device_type=marker_device_type, fallback_to_fake=True)
-marker_address = device_info['com_port']
-marker_manager = mark.MarkerManager(marker_device_type, marker_address, crash_on_marker_errors=False)
+Example code on using the Marker Management library can be found in the root of the repository (example.py).
 
-# Print the address and properties
-print(marker_manager.device_address)
-print(marker_manager.device_properties)
-
-# Send markers
-# (As an example, sending the marker sequence below will result
-# in two errors that are saved in the error table)
-marker_manager.set_value(255)
-timing.delay(100)
-marker_manager.set_value(0)
-timing.delay(1000)
-marker_manager.set_value(3)
-timing.delay(100)
-marker_manager.set_value(0)
-timing.delay(1000)
-marker_manager.set_value(3)
-timing.delay(100)
-marker_manager.set_value(0)
-timing.delay(1000)
-marker_manager.set_value(2)
-timing.delay(100)
-marker_manager.set_value(2)
-timing.delay(5)
-marker_manager.set_value(0)
-timing.delay(1000)
-
-# Generate marker tables, save and print them
-marker_table, marker_summary, errors = marker_manager.gen_marker_table()
-marker_manager.save_marker_table()
-marker_manager.print_marker_table()
-
-# Close device
-marker_manager.close()
-```
 This example shows how python code can be used to create a connection with the device, how to send markers through the device and how to subsequently create a log containing information about the sent markers.
-
 
 For OpenSesame, the marker_manager module has been implemented in a [plugin](https://github.com/solo-fsw/opensesame_plugin_markers).
 
