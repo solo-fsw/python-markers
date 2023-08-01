@@ -379,7 +379,7 @@ class TestFindDevice(unittest.TestCase):
                 mock_serial_class = MagicMock()
                 mock_serial_class.device_properties = {"Device": "UsbParMarker", "Serialno": "1"}
                 mock_serial_class._close.return_value = None
-                with patch("python_markers.marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
+                with patch("python_markers.marker_management.Eva", return_value=mock_serial_class) as mock_serial:
                     answer = marker_management.find_device(device_type="UsbParMarker", serial_no="1")
         self.assertEqual(str(e.exception.id), "MultipleConnections")
 
@@ -390,7 +390,7 @@ class TestFindDevice(unittest.TestCase):
                 mock_serial_class = MagicMock()
                 mock_serial_class._close.side_effect = ["No error first time around", Exception("This is an error"), "This is not"]
                 mock_serial_class.device_properties = {"Device": "UsbParMarker", "Serialno": "1"}
-                with patch("python_markers.marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
+                with patch("python_markers.marker_management.Eva", return_value=mock_serial_class) as mock_serial:
                     answer = marker_management.find_device(device_type="UsbParMarker", serial_no="")
         self.assertEqual(str(e.exception.id), "NoConnection")
 
@@ -399,7 +399,7 @@ class TestFindDevice(unittest.TestCase):
                 mock_comports.return_value = [("A", "1a", "USB VID:PID=2341:1")]
                 mock_serial_class = MagicMock()
                 mock_serial_class.device_properties = {"Version": "0001", "Serialno": "1", "Device": "UsbParMarker"}
-                with patch("python_markers.marker_management.SerialDevice", return_value=mock_serial_class) as mock_serial:
+                with patch("python_markers.marker_management.Eva", return_value=mock_serial_class) as mock_serial:
                     answer = marker_management.find_device(device_type="UsbParMarker", serial_no="1")
         correct = {"device": {"Version": "0001", "Serialno": "1", "Device": "UsbParMarker"}, "com_port": "A"}
         self.assertEqual(answer, correct)
