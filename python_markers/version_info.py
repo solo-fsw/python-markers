@@ -1,6 +1,6 @@
 # Metadata for package. Used in setup.py and module file(s).
 
-version = "0.1.0"
+version = "0.1.1"
 name = "marker_management"
 description = "A package meant for sending markers using the various digital output devices used at the FSW."
 url = "https://github.com/solo-fsw/python-markers"
