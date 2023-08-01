@@ -761,15 +761,12 @@ class SerialDevice(DeviceInterface):
 
                 # Get reply
                 data = self.serial_device.readline()
-                decoded_data = data.decode('utf-8')
-
+                
                 # If reply is json string, decode it
                 try:
                     json.loads(decoded_data)
-                except ValueError:
-                    pass
-                else:
-                    decoded_data = json.loads(decoded_data)
+                except:
+                    decoded_data = data.decode('utf-8')
 
                 # Close device
                 self.serial_device.close()
@@ -827,9 +824,9 @@ class UsbParMarker(SerialDevice):
 
     def leds_on(self):
         """Turns led lights on"""
-        sw_version = self.get_sw_version()
-        if float(sw_version) < 1.3:
-            warnings.warn('Check firmware version, could not turn on leds')
+        hw_version = self.get_hw_version()
+        if float(hw_version) < 3:
+            warnings.warn('Check hardware version, could not turn on leds')
             leds_on_answer = 'LedsOff'
         else:
             leds_on_answer = self.send_command('L')
@@ -837,9 +834,9 @@ class UsbParMarker(SerialDevice):
 
     def leds_off(self):
         """Turns led lights on"""
-        sw_version = self.get_sw_version()
-        if float(sw_version) < 1.3:
-            warnings.warn('Check firmware version, could not turn off leds')
+        hw_version = self.get_hw_version()
+        if float(hw_version) < 3:
+            warnings.warn('Check hardware version, could not turn off leds')
             leds_off_answer = 'LedsOff'
         else:
             leds_off_answer = self.send_command('O')
