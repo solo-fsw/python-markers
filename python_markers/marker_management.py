@@ -243,9 +243,10 @@ class MarkerManager:
             try:
                 self.device_interface._set_value(value)
             except Exception as e:
-                err_msg = f"Could not send marker: {e}."
+                err_msg = f"Could not send marker, check connection: {e}."
                 is_fatal = False
-                raise MarkerError(err_msg, is_fatal)
+                Eid = "CouldNotSendMarker"
+                raise MarkerError(err_msg, is_fatal, Eid)
 
             # The same value should not be sent twice (except 0, that doesn't matter):
             if not len(self.set_value_list) == 0 and not value == 0:
@@ -647,7 +648,6 @@ class SerialDevice(DeviceInterface):
         serial_device = the serial device
 
     """
-
     def __init__(self, device_address):
 
         # Save attribs:
@@ -678,7 +678,7 @@ class SerialDevice(DeviceInterface):
                           "Serialno": "0000000",
                           "Device": FAKE_DEVICE}
 
-        self._device_properties = properties
+        self._device_properties = properties    
 
     @property
     def device_address(self):
@@ -711,6 +711,14 @@ class SerialDevice(DeviceInterface):
                       "timeout": 2}
 
         if not self.is_fake:
+
+            try:
+                # Try closing (if already opened)
+                self.serial_device.close()
+                timing.delay(100)
+            except:
+                pass
+
             # Create serial device.
             try:
                 self.serial_device = serial.Serial(self._device_address, **params)
@@ -734,9 +742,6 @@ class SerialDevice(DeviceInterface):
             raise SerialError(err_msg, Eid)
 
         else:
-            # Close device and open in command mode
-            self.serial_device.close()
-            timing.delay(100)
 
             self.command_mode()
             timing.delay(100)
@@ -762,7 +767,7 @@ class SerialDevice(DeviceInterface):
                 # Get reply
                 data = self.serial_device.readline()
                 decoded_data = data.decode('utf-8')
-
+                
                 # If reply is json string, decode it
                 try:
                     json.loads(decoded_data)
@@ -770,7 +775,7 @@ class SerialDevice(DeviceInterface):
                     pass
                 else:
                     decoded_data = json.loads(decoded_data)
-
+                    
                 # Close device
                 self.serial_device.close()
                 timing.delay(100)
@@ -823,31 +828,58 @@ class SerialDevice(DeviceInterface):
 
 
 class UsbParMarker(SerialDevice):
-    """Class for the UsbParMarker."""
+
+    """Class for the UsbParMarker.
+
+    Attributes:
+        _device_address: the serial device address (e.g. COM1)
+
+    """    
+
+    def __init__(self, device_address):
+        # Set device address
+
+        self._device_address = device_address
+        super().__init__(self._device_address)    
 
     def leds_on(self):
         """Turns led lights on"""
-        sw_version = self.get_sw_version()
-        if float(sw_version) < 1.3:
-            warnings.warn('Check firmware version, could not turn on leds')
-            leds_on_answer = 'LedsOff'
+        hw_version = self.get_hw_version()
+        if float(hw_version) < 3:
+            warnings.warn('Check hardware version, could not turn on leds')
+            return
         else:
-            leds_on_answer = self.send_command('L')
-        return leds_on_answer
+            return self.send_command('L')
 
     def leds_off(self):
         """Turns led lights on"""
-        sw_version = self.get_sw_version()
-        if float(sw_version) < 1.3:
-            warnings.warn('Check firmware version, could not turn off leds')
-            leds_off_answer = 'LedsOff'
+        hw_version = self.get_hw_version()
+        if float(hw_version) < 3:
+            warnings.warn('Check hardware version, could not turn off leds')
+            return
         else:
-            leds_off_answer = self.send_command('O')
-        return leds_off_answer
+            return self.send_command('O')
 
 
 class Eva(SerialDevice):
-    """Class for Eva device."""
+    """Class for Eva device.
+
+    Attributes:
+        _device_address: the serial device address (e.g. COM1)
+
+    """   
+
+    def __init__(self, device_address):
+        # SEt device address and check if Eva is in active mode
+
+        self._device_address = device_address
+
+        if self.get_mode().strip() != "Mode:Active":
+            err_msg = "Cannot use Eva. Eva is in passive mode, make sure Eva is in active mode. See https://github.com/solo-fsw/Eva/tree/main for more info."
+            Eid = "EvaMode"
+            raise SerialError(err_msg, Eid)         
+
+        super().__init__(self._device_address)
 
     def set_active_mode(self):
         """Set into active mode"""
@@ -977,18 +1009,26 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
         for port in port_list:
 
             try:
-                # Create general serial device to obtain device info
-                cur_device = SerialDevice(port)
+                # Try UsbParMarker first
+                cur_device = UsbParMarker(port)
                 cur_device._close()
+                
             except:
                 try:
+                    # Try Eva
+                    cur_device = Eva(port)
                     cur_device._close()
-                except:
-                    pass
-                connection_error = True
-                connection_error_port = port
-                connection_error_info = sys.exc_info()[1]
-                continue
+
+                except:               
+                    try:
+                        cur_device._close()
+                    except:
+                        pass
+                    
+                    connection_error = True
+                    connection_error_port = port
+                    connection_error_info = sys.exc_info()[1]
+                    continue
 
             temp_info["device"] = cur_device.device_properties
 
