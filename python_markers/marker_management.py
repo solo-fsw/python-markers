@@ -431,16 +431,16 @@ class MarkerManager:
 
         # Create summary table
         summary_df = marker_df.loc[:, ('value', 'occurrence')]
-        summary_df["mean_duration"] = None
-        summary_df["min_duration"] = None
-        summary_df["max_duration"] = None
-        summary_df["total_duration"] = None
+        summary_df["mean_duration_ms"] = None
+        summary_df["min_duration_ms"] = None
+        summary_df["max_duration_ms"] = None
+        summary_df["total_duration_ms"] = None
         for index, val in enumerate(summary_df.value):
             all_durations = marker_df[summary_df["value"] == val].duration_ms.tolist()
-            summary_df.loc[index, 'mean_duration'] = (sum(all_durations)) / len(all_durations)
-            summary_df.loc[index, 'min_duration'] = min(all_durations)
-            summary_df.loc[index, 'max_duration'] = max(all_durations)
-            summary_df.loc[index, 'total_duration'] = sum(all_durations)
+            summary_df.loc[index, 'mean_duration_ms'] = (sum(all_durations)) / len(all_durations)
+            summary_df.loc[index, 'min_duration_ms'] = min(all_durations)
+            summary_df.loc[index, 'max_duration_ms'] = max(all_durations)
+            summary_df.loc[index, 'total_duration_ms'] = sum(all_durations)
 
         summary_df = summary_df.drop_duplicates(subset=['value'], keep='last')
 
