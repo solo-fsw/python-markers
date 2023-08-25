@@ -83,7 +83,7 @@ class MarkerManager:
         error_df:
             dataframe with all marker errors (filled when calling gen_marker_table)
         _current_value:
-            the current value that is
+            the current marker/output value, including zero (not set if device_interface is used directly)
         gui:
             gui for future purposes (for now: gui = None)
     """
