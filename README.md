@@ -79,7 +79,7 @@ Where python is the path to your python executable. The main library can be used
 The library can also be imported into your conda environment. This method also uses pip install, but then from within the conda environment:
 
 1. Activate your conda environment
-    - For activation use: `source activate myenv`
+    - For activation use: `conda activate myenv`
 2. Ensure git and pip are installed in the conda environment
     - They can be installed with: `conda install git pip`
 3. Use pip to install the library in the conda environment
