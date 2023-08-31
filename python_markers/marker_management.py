@@ -1067,7 +1067,7 @@ def find_device(device_type='', serial_no='', com_port='', fallback_to_fake=Fals
                 info["com_port"] = connected_port_list[device_hit_index]
 
         # Check if connection error happened
-        if connection_error:
+        if connection_error and not connected_port_list:
             err_msg = f'Could not connect to "{connection_error_port}" because: {connection_error_info}'
             Eid = "NoConnection"
             raise FindDeviceError(err_msg, Eid)
