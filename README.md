@@ -101,7 +101,7 @@ dependencies:
     - numpy
     - pip
     - pip:
-        - "--editable=git+https://github.com/solo-fsw/python-markers"
+        - "git+https://github.com/solo-fsw/python-markers"
 ```
 
 ### Using Submodules ###
