@@ -136,7 +136,7 @@ For OpenSesame, the marker_manager module has been implemented in a [plugin](htt
 ## References ##
 
 - [SOLO wiki on markers](https://researchwiki.solo.universiteitleiden.nl/xwiki/wiki/researchwiki.solo.universiteitleiden.nl/view/Hardware/Markers%20and%20Events/)
-- [OpenSesame Markers plugin](https://github.com/solo-fsw/opensesame_plugin_markers)
+- [OpenSesame 4 Markers plugin](https://github.com/solo-fsw/opensesame4_plugin_markers) and [OpenSesame 3 Markers plugin](https://github.com/solo-fsw/opensesame3_plugin_markers)
 - [SOLO wiki on the UsbParMarker](https://researchwiki.solo.universiteitleiden.nl/xwiki/wiki/researchwiki.solo.universiteitleiden.nl/view/Hardware/Markers%20and%20Events/UsbParMarker/)
 - [UsbParMarker github page](https://github.com/solo-fsw/UsbParMarker)
 - [SOLO wiki on Eva](https://researchwiki.solo.universiteitleiden.nl/xwiki/wiki/researchwiki.solo.universiteitleiden.nl/view/Hardware/Markers%20and%20Events/EVA/)
