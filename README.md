@@ -130,7 +130,7 @@ Example code on using the Marker Management library can be found in the root of 
 
 This example shows how python code can be used to create a connection with the device, how to send markers through the device and how to subsequently create a log containing information about the sent markers.
 
-For OpenSesame, the marker_manager module has been implemented in a [plugin](https://github.com/solo-fsw/opensesame_plugin_markers).
+For OpenSesame, the marker_manager module has been implemented in a [plugin](https://github.com/solo-fsw/opensesame4_plugin_markers).
 
 
 ## References ##
