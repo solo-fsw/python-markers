@@ -131,3 +131,7 @@ dmypy.json
 # Additions
 .vscode/
 *.tsv
+
+# PsychoPy
+data/
+*lastrun.py

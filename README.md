@@ -132,7 +132,7 @@ This example shows how python code can be used to create a connection with the d
 
 For **OpenSesame**, the marker_manager module has been implemented in a [plugin](https://github.com/solo-fsw/opensesame4_plugin_markers).
 
-For **PsychoPy**, place the python_markers folder in the same location as your PsychoPy task, and implement the code as described in example.py in your task. The python_markers folder can be downloaded by downloading or cloning this repo.
+For **PsychoPy**, see the psychopy folder for an example and more information.
 
 
 ## References ##
