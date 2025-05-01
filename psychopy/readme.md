@@ -6,4 +6,4 @@ To use the marker_management module, place the python_markers folder in the same
 The eriksen_flanker_markers task is a simple, classic flanker task. A marker is sent during fixation and stimulus presentation. The marker value changes dependent on the congruency of the stimulus.
 All relevant marker code is located in the task in the trial routine. The conditions.xlsx file contains trial information and the marker values.
 
-For more information on using the marker_management module, see also the example.py script in the base of this repo.
+For more information on using the marker_management module, see also the example.py script in the root of this repo.
